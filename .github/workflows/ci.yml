@@ -11,6 +11,10 @@ jobs:
   build:
     name: 构建验证
     runs-on: ubuntu-latest
+    # @jiaozai1/axis-ui 发布在 GitHub Packages，GITHUB_TOKEN 需要 packages 读权限
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -21,9 +25,15 @@ jobs:
           # Vite 8 要求 Node ^20.19 或 >=22.12，取 22 LTS
           node-version: 22
           cache: npm
+          # 为 @jiaozai1 scope 配置 GitHub Packages registry 及认证
+          registry-url: https://npm.pkg.github.com
+          scope: '@jiaozai1'
 
       - name: 安装依赖（按 lock 文件精确安装）
         run: npm ci
+        env:
+          # GitHub Packages 即使公开包也要求 token，这里用工作流内置令牌
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 生产构建
         run: npm run build
