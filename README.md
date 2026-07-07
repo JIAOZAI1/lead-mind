@@ -24,7 +24,11 @@ npm run preview  # 预览构建产物
 
 ```
 .github/workflows/
-└── ci.yml              # GitHub Actions：push main / PR 时自动构建并上传产物
+├── ci.yml              # GitHub Actions：push main / PR 时自动构建并上传产物
+└── docker.yml          # GitHub Actions：push main 时构建 Docker 镜像并推送 ghcr.io
+deploy/
+└── nginx.conf          # 容器内 nginx 配置（SPA 回退 + 静态资源缓存 + gzip）
+Dockerfile              # 多阶段构建：node 构建 dist → nginx 托管
 scripts/
 └── update-axis-ui.sh   # axis-ui 升级脚本（查最新版 → 升级 → 报告组件/Token 变更 → 构建验证）
 src/
@@ -51,6 +55,22 @@ src/
 | 登录 | `src/views/LoginPage.vue` | 账号/密码登录，AxForm 声明式校验（账号必填、密码至少 6 位），记住我、忘记密码、注册入口，支持亮/暗主题切换。登录接口暂为模拟，待后端接入 |
 | 主页 | `src/views/HomePage.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 系统设置），顶栏展示用户信息（角色标签、租户提示、退出）与主题切换，工作台含概览统计卡片（模拟数据），未开发模块显示建设中提示 |
 
+## Docker 部署
+
+镜像由 GitHub Actions 自动构建并推送到 `ghcr.io/jiaozai1/lead-mind`（`latest` + commit SHA 双标签）：
+
+```bash
+docker pull ghcr.io/jiaozai1/lead-mind:latest
+docker run -d -p 8080:80 ghcr.io/jiaozai1/lead-mind:latest   # 访问 http://localhost:8080
+```
+
+本地手动构建（axis-ui 在 GitHub Packages，需要把 npm token 以 BuildKit secret 传入，token 不会进镜像层）：
+
+```bash
+export NPM_TOKEN=<你的 GitHub PAT（read:packages）>
+docker build --secret id=npm_token,env=NPM_TOKEN -t lead-mind .
+```
+
 ## 设计规范
 
 项目严格遵循 axis-ui 前端设计规范（详见 `CLAUDE.md`）：
@@ -74,3 +94,6 @@ src/
   - 布局封装：侧边菜单 + 顶栏抽取为 `layouts/AppLayout.vue`，菜单改为 `useNavigation.js` 配置数据驱动；新增页面只需用 AppLayout 包裹内容并在菜单配置中加一项
   - axis-ui 升级至 0.3.1（AxLink 新增 `size` / `weight` props）：顶栏"退出"、登录页"忘记密码"改用 `size="sm"`，移除自定义字号样式
   - 接入 GitHub Actions 自动化构建（`.github/workflows/ci.yml`）：push main / PR 触发，`npm ci` + 生产构建 + 上传 dist 产物（保留 7 天）
+- **2026-07-08**
+  - 支持 Docker 部署：新增多阶段 `Dockerfile`（node 构建 → nginx 托管，含 SPA 回退与健康检查）、`deploy/nginx.conf`、`.dockerignore`
+  - 新增 `docker.yml` 工作流：push main 自动构建镜像并推送 `ghcr.io/jiaozai1/lead-mind`，npm token 走 BuildKit secret 不落镜像层，启用 GHA 层缓存

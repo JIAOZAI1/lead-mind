@@ -1,0 +1,56 @@
+# 构建 Docker 镜像并推送到 GitHub Container Registry（ghcr.io）
+# 触发：push 到 main 自动构建；也可在 Actions 页面手动触发（workflow_dispatch）
+name: Docker
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  docker:
+    name: 构建并推送镜像
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # 推送镜像到 ghcr.io + 读取 GitHub Packages 上的 axis-ui 依赖
+      packages: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 初始化 Buildx 构建器
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 ghcr.io 镜像仓库
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 生成镜像标签与元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # ghcr 镜像名必须全小写
+          images: ghcr.io/jiaozai1/lead-mind
+          tags: |
+            # main 分支同时打 latest 和 commit 短 SHA 两个标签
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+
+      - name: 构建并推送镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # 把 npm 认证 token 以 BuildKit secret 方式传给 Dockerfile 的 npm ci 步骤：
+          # 优先用 PAT secret（私有包场景），未配置则回退内置令牌
+          secrets: |
+            npm_token=${{ secrets.NPM_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          # 利用 GitHub Actions 缓存加速依赖层复用
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
