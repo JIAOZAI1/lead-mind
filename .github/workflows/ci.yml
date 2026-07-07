@@ -32,8 +32,10 @@ jobs:
       - name: 安装依赖（按 lock 文件精确安装）
         run: npm ci
         env:
-          # GitHub Packages 即使公开包也要求 token，这里用工作流内置令牌
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GitHub Packages 即使公开包也要求 token：
+          # 优先使用仓库 secret 中的 PAT（私有包场景，需含 read:packages 权限），
+          # 未配置时回退到工作流内置令牌（公开包场景，无需任何手动配置）
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: 生产构建
         run: npm run build
