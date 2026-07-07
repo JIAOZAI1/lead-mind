@@ -1,0 +1,36 @@
+# 自动化构建：push 到 main 分支或提 PR 时触发
+# 校验依赖可复现安装 + 生产构建通过，并上传构建产物（保留 7 天，供部署/排查使用）
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: 构建验证
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Vite 8 要求 Node ^20.19 或 >=22.12，取 22 LTS
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖（按 lock 文件精确安装）
+        run: npm ci
+
+      - name: 生产构建
+        run: npm run build
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7

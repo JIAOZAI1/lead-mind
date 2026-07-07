@@ -1,5 +1,7 @@
 # Lead Mind（客脉）
 
+[![CI](https://github.com/JIAOZAI1/lead-mind/actions/workflows/ci.yml/badge.svg)](https://github.com/JIAOZAI1/lead-mind/actions/workflows/ci.yml)
+
 SaaS 多租户外贸获客系统 · 前端项目
 
 帮助外贸人员通过互联网获取有价值的客户资源，并接入 AI 能力。
@@ -21,6 +23,8 @@ npm run preview  # 预览构建产物
 ## 目录结构
 
 ```
+.github/workflows/
+└── ci.yml              # GitHub Actions：push main / PR 时自动构建并上传产物
 scripts/
 └── update-axis-ui.sh   # axis-ui 升级脚本（查最新版 → 升级 → 报告组件/Token 变更 → 构建验证）
 src/
@@ -69,3 +73,4 @@ src/
   - 新增主页：左侧 AxMenu 菜单栏 + 顶栏用户信息 + 工作台概览；新增 `useAuth` / `useTheme` 组合式函数，登录成功后进入主页，退出返回登录页（暂未引入路由）
   - 布局封装：侧边菜单 + 顶栏抽取为 `layouts/AppLayout.vue`，菜单改为 `useNavigation.js` 配置数据驱动；新增页面只需用 AppLayout 包裹内容并在菜单配置中加一项
   - axis-ui 升级至 0.3.1（AxLink 新增 `size` / `weight` props）：顶栏"退出"、登录页"忘记密码"改用 `size="sm"`，移除自定义字号样式
+  - 接入 GitHub Actions 自动化构建（`.github/workflows/ci.yml`）：push main / PR 触发，`npm ci` + 生产构建 + 上传 dist 产物（保留 7 天）
