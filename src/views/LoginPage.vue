@@ -1,8 +1,12 @@
 <script setup>
 import { reactive, ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { AxMessage } from '@jiaozai1/axis-ui'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
+
+const route = useRoute()
+const router = useRouter()
 
 const form = reactive({
   username: '',
@@ -33,8 +37,9 @@ async function onSubmit() {
     // TODO: 替换为真实登录接口
     await new Promise((resolve) => setTimeout(resolve, 800))
     AxMessage.success(`欢迎回来，${form.username}`)
-    // 写入登录态，App.vue 监听到后切换到主页
     login(form.username)
+    // 被守卫拦截跳来登录的，登录后原路返回；直接访问登录页的进工作台
+    router.push(route.query.redirect ?? { name: 'dashboard' })
   } catch {
     AxMessage.error('登录失败，请稍后重试')
   } finally {

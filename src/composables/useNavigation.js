@@ -1,9 +1,10 @@
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 /**
  * 主导航菜单配置（数据驱动）
- * 新增页面时只需在这里加一项，AppLayout 会自动渲染菜单，无需改布局组件
- * key 为菜单唯一标识，含 children 的项渲染为二级子菜单
+ * key 必须与 router 中的路由 name 一致：菜单选中态直接由当前路由推导，
+ * 新增页面 = router 加一条路由 + 这里加一个菜单项
  */
 export const menuItems = [
   { key: 'dashboard', label: '工作台' },
@@ -19,20 +20,19 @@ export const menuItems = [
   { key: 'settings', label: '系统设置' },
 ]
 
-// 扁平化 key → label 映射，供标题显示使用
-const labelMap = Object.fromEntries(
-  menuItems.flatMap((item) => [
-    [item.key, item.label],
-    ...(item.children ?? []).map((child) => [child.key, child.label]),
-  ]),
-)
-
-// 模块级单例：当前选中菜单全局共享（布局组件与页面内容联动）
-const activeMenu = ref('dashboard')
-
 export function useNavigation() {
-  /** 当前选中菜单的标题（顶栏与页面标题共用） */
-  const activeMenuLabel = computed(() => labelMap[activeMenu.value] ?? '')
+  const route = useRoute()
+  const router = useRouter()
+
+  // 菜单选中态与路由双向绑定：读 = 当前路由名，写 = 触发路由跳转
+  // 这样浏览器前进/后退、直链访问时菜单高亮都能自动对上
+  const activeMenu = computed({
+    get: () => route.name,
+    set: (name) => router.push({ name }),
+  })
+
+  /** 当前页面标题（取路由 meta，顶栏与浏览器标签页共用同一来源） */
+  const activeMenuLabel = computed(() => route.meta.title ?? '')
 
   /** 含子菜单的分组默认全部展开 */
   const defaultOpenKeys = menuItems.filter((item) => item.children).map((item) => item.key)

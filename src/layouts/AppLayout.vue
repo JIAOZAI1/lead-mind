@@ -1,13 +1,21 @@
 <script setup>
-// 应用统一布局：左侧菜单栏 + 顶栏（页面标题 / 用户信息），内容区由页面通过默认插槽填充
-// 新增页面时直接用 <AppLayout> 包裹内容即可，菜单项在 composables/useNavigation.js 中配置
+// 应用统一布局：左侧菜单栏 + 顶栏（页面标题 / 用户信息），内容区渲染当前子路由页面
+// 新增页面 = router 加一条子路由 + useNavigation.js 菜单配置加一项
+import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
 import { useNavigation } from '../composables/useNavigation'
 
+const router = useRouter()
 const { currentUser, logout } = useAuth()
 const { isDark, toggle: onToggleTheme } = useTheme()
 const { activeMenu, activeMenuLabel, menuItems, defaultOpenKeys } = useNavigation()
+
+// 退出登录后回到登录页
+function onLogout() {
+  logout()
+  router.push({ name: 'login' })
+}
 </script>
 
 <template>
@@ -38,13 +46,13 @@ const { activeMenu, activeMenuLabel, menuItems, defaultOpenKeys } = useNavigatio
           <ax-tooltip :content="`租户：${currentUser.tenant}`" placement="bottom">
             <span class="app-layout__username">{{ currentUser.name }}</span>
           </ax-tooltip>
-          <ax-link type="default" size="sm" @click="logout">退出</ax-link>
+          <ax-link type="default" size="sm" @click="onLogout">退出</ax-link>
         </div>
       </header>
 
-      <!-- 内容区：页面自己的内容通过默认插槽注入 -->
+      <!-- 内容区：渲染当前子路由对应的页面 -->
       <main class="app-layout__content">
-        <slot />
+        <router-view />
       </main>
     </div>
   </div>

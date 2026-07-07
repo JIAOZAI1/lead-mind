@@ -43,7 +43,7 @@ src/
 ├── components/   # 业务公共组件（可复用的业务级组件）
 ├── composables/  # 组合式函数（useXxx；导航菜单配置在 useNavigation.js）
 ├── layouts/      # 布局组件（AppLayout：侧边菜单 + 顶栏，新页面一律用它包裹内容）
-├── router/       # 路由配置（引入 vue-router 前先询问用户）
+├── router/       # 路由配置（vue-router 4，history 模式；页面标题走路由 meta.title，菜单 key 与路由 name 一致）
 ├── stores/       # 状态管理（引入 pinia 前先询问用户）
 ├── utils/        # 纯工具函数
 ├── views/        # 页面级组件（XxxPage.vue）
@@ -58,7 +58,7 @@ src/
 - **命名语义化**：文件名、变量名、函数名要能直接读出业务含义（页面 `LoginPage.vue`、组合函数 `useAuth.js`、接口 `customerApi.js` 等）
 - **中文注释**：关键业务逻辑必须写中文注释，解释"为什么"而不是复述代码
 - **文档同步**：每次新增需求或功能，必须同步更新 `README.md`（功能列表 + 更新记录）
-- 提交代码前跑 `npm run build` 确认构建通过
+- **提交推送一律走 `commit-push` skill**：构建验证 → 变更与敏感信息审查 → Conventional Commits 中文提交信息 → 推送 → CI 提示
 
 ## 常用命令
 

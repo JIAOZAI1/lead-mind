@@ -34,16 +34,19 @@ scripts/
 src/
 ├── assets/       # 全局样式（main.css：全局基础样式，消费 axis-ui Token）
 ├── composables/  # 组合式函数
-│   ├── useAuth.js        # 登录态（当前为前端模拟，待后端接入）
+│   ├── useAuth.js        # 登录态（sessionStorage 持久化，待后端接入）
 │   ├── useTheme.js       # 亮/暗主题切换（全局单例）
-│   └── useNavigation.js  # 主导航菜单配置 + 当前选中态（新增菜单只改这里）
+│   └── useNavigation.js  # 主导航菜单配置 + 选中态与路由双向绑定
 ├── layouts/      # 布局组件
-│   └── AppLayout.vue     # 统一布局：侧边菜单 + 顶栏用户信息，内容区走插槽
-├── views/        # 页面级组件
-│   ├── LoginPage.vue   # 登录页
-│   └── HomePage.vue    # 主页（侧边菜单 + 顶栏 + 工作台）
-├── App.vue       # 根据登录态切换登录页 / 主页
-└── main.js       # 入口：全量注册 axis-ui 并引入样式
+│   └── AppLayout.vue     # 统一布局：侧边菜单 + 顶栏用户信息，内容区渲染子路由
+├── router/       # 路由配置（vue-router 4，history 模式 + 登录守卫）
+│   └── index.js
+├── views/        # 页面级组件（与路由一一对应）
+│   ├── LoginPage.vue             # /login 登录页
+│   ├── DashboardPage.vue         # /dashboard 工作台
+│   └── UnderConstructionPage.vue # 未开发模块共用占位页
+├── App.vue       # 根组件：仅渲染路由出口
+└── main.js       # 入口：注册 axis-ui + router 并引入样式
 ```
 
 随业务扩展将增加 `api/`（接口）、`components/`（业务公共组件）、`composables/`（组合式函数）、`router/`、`stores/`、`utils/` 等目录，详见 `CLAUDE.md` 中的目录结构规范。
@@ -53,7 +56,9 @@ src/
 | 功能 | 页面 | 说明 |
 |------|------|------|
 | 登录 | `src/views/LoginPage.vue` | 账号/密码登录，AxForm 声明式校验（账号必填、密码至少 6 位），记住我、忘记密码、注册入口，支持亮/暗主题切换。登录接口暂为模拟，待后端接入 |
-| 主页 | `src/views/HomePage.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 系统设置），顶栏展示用户信息（角色标签、租户提示、退出）与主题切换，工作台含概览统计卡片（模拟数据），未开发模块显示建设中提示 |
+| 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 系统设置），顶栏展示用户信息（角色标签、租户提示、退出）与主题切换，菜单高亮跟随路由 |
+| 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
+| 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回；页面标题跟随路由 |
 
 ## Docker 部署
 
@@ -97,3 +102,5 @@ docker build --secret id=npm_token,env=NPM_TOKEN -t lead-mind .
 - **2026-07-08**
   - 支持 Docker 部署：新增多阶段 `Dockerfile`（node 构建 → nginx 托管，含 SPA 回退与健康检查）、`deploy/nginx.conf`、`.dockerignore`
   - 新增 `docker.yml` 工作流：push main 自动构建镜像并推送 `ghcr.io/jiaozai1/lead-mind`，npm token 走 BuildKit secret 不落镜像层，启用 GHA 层缓存
+  - 引入 vue-router 4：页面与路由一一对应、懒加载分包、登录守卫（未登录跳转 `/login` 并支持原路返回）、标签页标题跟随路由；登录态持久化到 sessionStorage；`HomePage` 拆分为 `DashboardPage` + 共用占位页
+  - 新增 `commit-push` skill（`.claude/skills/`）：提交推送流程标准化（构建验证、敏感信息审查、规范化提交信息）
