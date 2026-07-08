@@ -59,6 +59,7 @@ src/
 - **中文注释**：关键业务逻辑必须写中文注释，解释"为什么"而不是复述代码
 - **文档同步**：每次新增需求或功能，必须同步更新 `README.md`（功能列表 + 更新记录）
 - **提交推送一律走 `commit-push` skill**：构建验证 → 变更与敏感信息审查 → Conventional Commits 中文提交信息 → 推送 → CI 提示
+- **部署 dev 环境一律走 `deploy-dev` skill**：本地 kubectl（context `default`）apply 清单 + 滚动重启拉最新镜像 + 就绪验证
 
 ## 常用命令
 

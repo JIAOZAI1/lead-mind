@@ -1,0 +1,59 @@
+# Lead Mind 前端 Deployment
+# 镜像来自 GitHub Actions 自动构建推送的 ghcr.io/jiaozai1/lead-mind
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lead-mind
+  labels:
+    app.kubernetes.io/name: lead-mind
+    app.kubernetes.io/component: frontend
+spec:
+  # 前端为无状态静态站点，两副本保证滚动更新期间不中断
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lead-mind
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lead-mind
+        app.kubernetes.io/component: frontend
+    spec:
+      # ghcr 私有镜像需要拉取凭证，创建命令见 deploy/k8s/README 说明（仓库 README「K8s 部署」一节）
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: lead-mind
+          image: ghcr.io/jiaozai1/lead-mind:latest
+          # latest 标签必须每次都拉远端，否则节点用旧缓存发不出新版
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          # 静态站点资源占用极低，限制收紧避免挤占集群
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          # 就绪探针：通过后才接入流量（滚动更新零中断的关键）
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          # 存活探针：nginx 假死时自动重启容器
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15

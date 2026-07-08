@@ -1,0 +1,15 @@
+# 集群内访问入口：Ingress → Service → Pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: lead-mind
+  labels:
+    app.kubernetes.io/name: lead-mind
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: lead-mind
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

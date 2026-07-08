@@ -1,0 +1,28 @@
+# 对外暴露：把域名流量转发到 lead-mind Service
+# host 换成你的实际域名；SPA 的路由回退由镜像内 nginx 处理，这里无需额外配置
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lead-mind
+  labels:
+    app.kubernetes.io/name: lead-mind
+  # 如需 HTTPS，配合 cert-manager 加上：
+  # annotations:
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: lead-mind.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lead-mind
+                port:
+                  name: http
+  # HTTPS 证书（配合上方 cert-manager 注解使用）：
+  # tls:
+  #   - hosts: [lead-mind.example.com]
+  #     secretName: lead-mind-tls

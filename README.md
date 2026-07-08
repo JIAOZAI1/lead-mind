@@ -27,7 +27,8 @@ npm run preview  # 预览构建产物
 ├── ci.yml              # GitHub Actions：push main / PR 时自动构建并上传产物
 └── docker.yml          # GitHub Actions：push main 时构建 Docker 镜像并推送 ghcr.io
 deploy/
-└── nginx.conf          # 容器内 nginx 配置（SPA 回退 + 静态资源缓存 + gzip）
+├── nginx.conf          # 容器内 nginx 配置（SPA 回退 + 静态资源缓存 + gzip）
+└── k8s/                # Kubernetes 部署清单（Deployment / Service / Ingress）
 Dockerfile              # 多阶段构建：node 构建 dist → nginx 托管
 scripts/
 └── update-axis-ui.sh   # axis-ui 升级脚本（查最新版 → 升级 → 报告组件/Token 变更 → 构建验证）
@@ -76,6 +77,24 @@ export NPM_TOKEN=<你的 GitHub PAT（read:packages）>
 docker build --secret id=npm_token,env=NPM_TOKEN -t lead-mind .
 ```
 
+## Kubernetes 部署
+
+清单位于 `deploy/k8s/`（Deployment 双副本滚动更新 + ClusterIP Service + Ingress）：
+
+```bash
+# 1. 创建 ghcr 镜像拉取凭证（一次性；PAT 需 read:packages 权限）
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username=JIAOZAI1 \
+  --docker-password=<你的 GitHub PAT>
+
+# 2. 部署（先把 ingress.yaml 里的 host 换成实际域名）
+kubectl apply -f deploy/k8s/
+
+# 3. 发新版：CI 推送新镜像后滚动重启即可
+kubectl rollout restart deployment/lead-mind
+```
+
 ## 设计规范
 
 项目严格遵循 axis-ui 前端设计规范（详见 `CLAUDE.md`）：
@@ -104,3 +123,6 @@ docker build --secret id=npm_token,env=NPM_TOKEN -t lead-mind .
   - 新增 `docker.yml` 工作流：push main 自动构建镜像并推送 `ghcr.io/jiaozai1/lead-mind`，npm token 走 BuildKit secret 不落镜像层，启用 GHA 层缓存
   - 引入 vue-router 4：页面与路由一一对应、懒加载分包、登录守卫（未登录跳转 `/login` 并支持原路返回）、标签页标题跟随路由；登录态持久化到 sessionStorage；`HomePage` 拆分为 `DashboardPage` + 共用占位页
   - 新增 `commit-push` skill（`.claude/skills/`）：提交推送流程标准化（构建验证、敏感信息审查、规范化提交信息）
+  - 支持 Kubernetes 部署：`deploy/k8s/` 新增 Deployment（双副本零中断滚动更新、就绪/存活探针、资源限额）、Service、Ingress 清单
+  - 新增 `deploy-dev` skill（`.claude/skills/`）：dev 环境部署流程标准化（本地 kubectl apply + 滚动重启拉新镜像 + 就绪验证与失败排查）
+  - 页面静态标题改为 Lead Mind（原为脚手架默认的 Vite App），`html lang` 补为 `zh-CN`
