@@ -16,6 +16,8 @@ spec:
     - host: lead-mind.dev.com
       http:
         paths:
+          # 后端 API 不在这里转发：浏览器直连后端网关域名（lead-mind-backend.dev.com），
+          # 跨域由网关的 Traefik CORS 中间件按来源白名单放行
           - path: /
             pathType: Prefix
             backend:

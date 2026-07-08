@@ -42,9 +42,9 @@ function onLogout() {
         <div class="app-layout__user">
           <ax-switch :model-value="isDark" size="sm" @change="onToggleTheme" />
           <span class="app-layout__theme-label">{{ isDark ? '暗色' : '亮色' }}</span>
-          <ax-tag type="primary" round>{{ currentUser.role }}</ax-tag>
-          <ax-tooltip :content="`租户：${currentUser.tenant}`" placement="bottom">
-            <span class="app-layout__username">{{ currentUser.name }}</span>
+          <!-- 用户信息来自 sso-service /me（角色/租户后端暂未提供） -->
+          <ax-tooltip :content="`邮箱：${currentUser.email}`" placement="bottom">
+            <span class="app-layout__username">{{ currentUser.username }}</span>
           </ax-tooltip>
           <ax-link type="default" size="sm" @click="onLogout">退出</ax-link>
         </div>

@@ -4,6 +4,7 @@ import AppLayout from '../layouts/AppLayout.vue'
 
 // 页面组件全部懒加载：按路由分包，首屏只加载当前页面的代码
 const LoginPage = () => import('../views/LoginPage.vue')
+const RegisterPage = () => import('../views/RegisterPage.vue')
 const DashboardPage = () => import('../views/DashboardPage.vue')
 const UnderConstructionPage = () => import('../views/UnderConstructionPage.vue')
 
@@ -11,6 +12,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', name: 'login', component: LoginPage, meta: { public: true, title: '登录' } },
+    { path: '/register', name: 'register', component: RegisterPage, meta: { public: true, title: '注册' } },
     {
       // 业务页面统一挂在 AppLayout 下：共享侧边菜单 + 顶栏，子路由渲染进内容区
       path: '/',
@@ -36,8 +38,8 @@ router.beforeEach((to) => {
   if (!to.meta.public && !currentUser.value) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  // 已登录状态下访问登录页没有意义，送回工作台
-  if (to.name === 'login' && currentUser.value) {
+  // 已登录状态下访问登录/注册页没有意义，送回工作台
+  if ((to.name === 'login' || to.name === 'register') && currentUser.value) {
     return { name: 'dashboard' }
   }
 })

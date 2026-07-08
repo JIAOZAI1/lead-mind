@@ -14,7 +14,7 @@ const overviewStats = [
 
 <template>
   <ax-card class="dashboard-welcome" borderless>
-    <h2 class="dashboard-welcome__title">你好，{{ currentUser.name }} 👋</h2>
+    <h2 class="dashboard-welcome__title">你好，{{ currentUser.username }} 👋</h2>
     <p class="dashboard-welcome__desc">欢迎使用客脉，今天也一起高效获客吧。</p>
   </ax-card>
   <ax-row :gutter="16">
