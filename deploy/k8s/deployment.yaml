@@ -8,8 +8,8 @@ metadata:
     app.kubernetes.io/name: lead-mind
     app.kubernetes.io/component: frontend
 spec:
-  # 前端为无状态静态站点，两副本保证滚动更新期间不中断
-  replicas: 2
+  # dev 环境单节点资源有限，先跑单副本；maxUnavailable=0 + maxSurge=1 仍可保证滚动更新不中断
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:

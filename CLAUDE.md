@@ -61,6 +61,13 @@ src/
 - **提交推送一律走 `commit-push` skill**：构建验证 → 变更与敏感信息审查 → Conventional Commits 中文提交信息 → 推送 → CI 提示
 - **部署 dev 环境一律走 `deploy-dev` skill**：本地 kubectl（context `default`）apply 清单 + 滚动重启拉最新镜像 + 就绪验证
 
+## 环境信息
+
+- **dev 机器**：`192.168.8.184`，已配置 SSH，可直接 `ssh` 连接执行运维操作
+- **dev 集群**：dev 机器上的 k3s（单节点 `lam-server`），本地 kubectl context `default` 直连；部署走 `deploy-dev` skill
+- **ingress 控制器**：k3s 内置 Traefik（集群默认 IngressClass，80/443 已绑定节点 IP），**不要再装 ingress-nginx**（会抢端口）
+- **dev 域名**：`lead-mind.dev.com` → 本机 `/etc/hosts` 解析到 `192.168.8.184`
+
 ## 常用命令
 
 ```bash

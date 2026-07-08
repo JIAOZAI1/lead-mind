@@ -126,3 +126,4 @@ kubectl rollout restart deployment/lead-mind
   - 支持 Kubernetes 部署：`deploy/k8s/` 新增 Deployment（双副本零中断滚动更新、就绪/存活探针、资源限额）、Service、Ingress 清单
   - 新增 `deploy-dev` skill（`.claude/skills/`）：dev 环境部署流程标准化（本地 kubectl apply + 滚动重启拉新镜像 + 就绪验证与失败排查）
   - 页面静态标题改为 Lead Mind（原为脚手架默认的 Vite App），`html lang` 补为 `zh-CN`
+  - dev 环境接入 k3s 内置 Traefik ingress（`ingressClassName: traefik`），域名 `lead-mind.dev.com` 解析至 dev 机器；dev 副本数调整为 1

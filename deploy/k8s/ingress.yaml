@@ -10,9 +10,10 @@ metadata:
   # annotations:
   #   cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
-  ingressClassName: nginx
+  # dev 集群为 k3s，使用其内置的 Traefik 控制器（集群默认 IngressClass）
+  ingressClassName: traefik
   rules:
-    - host: lead-mind.example.com
+    - host: lead-mind.dev.com
       http:
         paths:
           - path: /
@@ -24,5 +25,5 @@ spec:
                   name: http
   # HTTPS 证书（配合上方 cert-manager 注解使用）：
   # tls:
-  #   - hosts: [lead-mind.example.com]
+  #   - hosts: [lead-mind.dev.com]
   #     secretName: lead-mind-tls
