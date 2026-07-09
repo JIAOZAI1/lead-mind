@@ -41,22 +41,60 @@ async function refreshStatus() {
   }
 }
 
-// ---- 任务编排 ----
+// ---- 任务编排（服务端分页 + 排序）----
 const tasks = ref([])
+const tasksLoading = ref(false)
+const taskPagination = reactive({
+  page: 1,
+  pageSize: 20,
+  pageSizes: [10, 20, 50, 100],
+  total: 0,
+})
+// 默认按顺序号升序，与任务实际执行顺序一致；sortable 列对应后端可排序白名单
+const taskSort = reactive({ key: 'order', order: 'asc' })
+
 const taskColumns = [
-  { key: 'order', title: '顺序', align: 'center' },
-  { key: 'name', title: '任务名称' },
+  { key: 'order', title: '顺序', align: 'center', sortable: true },
+  { key: 'name', title: '任务名称', sortable: true },
   { key: 'handlerType', title: 'Handler 类型' },
   { key: 'pluginAssembly', title: '插件程序集' },
   { key: 'timeoutSeconds', title: '超时(秒)', align: 'center' },
   { key: 'maxRetryCount', title: '最大重试', align: 'center' },
+  { key: 'actions', title: '操作', align: 'center' },
 ]
 
-async function loadTasks() {
-  tasks.value = await jobApi.listJobTasks(jobId)
+async function loadTasks(page = taskPagination.page) {
+  tasksLoading.value = true
+  try {
+    const result = await jobApi.listJobTasks(jobId, {
+      page,
+      pageSize: taskPagination.pageSize,
+      // 清空排序（key 为空）时回落到默认的顺序号升序
+      sortBy: taskSort.key || 'order',
+      sortOrder: taskSort.order || 'asc',
+    })
+    tasks.value = result.items
+    taskPagination.page = result.page ?? page
+    taskPagination.pageSize = result.pageSize ?? taskPagination.pageSize
+    taskPagination.total = result.total
+  } catch (err) {
+    AxMessage.error(`任务列表加载失败：${err.message}`)
+  } finally {
+    tasksLoading.value = false
+  }
 }
 
-/** 任务执行记录里只有 jobTaskId，用任务列表映射出名称 */
+function onTaskPageChange(page, pageSize) {
+  taskPagination.pageSize = pageSize
+  loadTasks(page)
+}
+
+// 排序变化后回到第一页重新查询
+function onTaskSortChange() {
+  loadTasks(1)
+}
+
+/** 任务执行记录里只有 jobTaskId，用任务列表映射出名称；任务列表分页后只覆盖当前页，页外任务回落为「任务 {id}」 */
 const taskNameById = computed(() =>
   Object.fromEntries(tasks.value.map((task) => [task.id, task.name])),
 )
@@ -111,6 +149,10 @@ function openExecutionDetail(execution) {
 const createTaskVisible = ref(false)
 const creatingTask = ref(false)
 const taskFormRef = ref(null)
+const editingTask = ref(null)
+const deletingTask = ref(null)
+const deleteTaskVisible = ref(false)
+const deletingTaskLoading = ref(false)
 
 const taskForm = reactive({
   name: '',
@@ -156,9 +198,10 @@ const taskRules = {
 }
 
 function openCreateTask() {
+  editingTask.value = null
   taskForm.name = ''
-  // 顺序默认接在现有任务后面
-  taskForm.order = String(tasks.value.length + 1)
+  // 顺序默认接在现有任务后面（任务列表已分页，用总数而不是当前页条数）
+  taskForm.order = String(taskPagination.total + 1)
   taskForm.handlerType = ''
   taskForm.pluginAssembly = ''
   taskForm.parametersJson = '{}'
@@ -167,26 +210,66 @@ function openCreateTask() {
   createTaskVisible.value = true
 }
 
-async function onCreateTask() {
+function openEditTask(task) {
+  editingTask.value = task
+  taskForm.name = task.name
+  taskForm.order = String(task.order)
+  taskForm.handlerType = task.handlerType
+  taskForm.pluginAssembly = task.pluginAssembly
+  taskForm.parametersJson = task.parametersJson ?? '{}'
+  taskForm.timeoutSeconds = String(task.timeoutSeconds)
+  taskForm.maxRetryCount = String(task.maxRetryCount)
+  createTaskVisible.value = true
+}
+
+function buildTaskPayload() {
+  return {
+    name: taskForm.name.trim(),
+    order: Number(taskForm.order),
+    handlerType: taskForm.handlerType.trim(),
+    pluginAssembly: taskForm.pluginAssembly.trim(),
+    parametersJson: taskForm.parametersJson.trim() || '{}',
+    timeoutSeconds: Number(taskForm.timeoutSeconds),
+    maxRetryCount: Number(taskForm.maxRetryCount),
+  }
+}
+
+async function onSaveTask() {
   if (!(await taskFormRef.value.validate())) return
   creatingTask.value = true
   try {
-    const task = await jobApi.createJobTask(jobId, {
-      name: taskForm.name.trim(),
-      order: Number(taskForm.order),
-      handlerType: taskForm.handlerType.trim(),
-      pluginAssembly: taskForm.pluginAssembly.trim(),
-      parametersJson: taskForm.parametersJson.trim() || '{}',
-      timeoutSeconds: Number(taskForm.timeoutSeconds),
-      maxRetryCount: Number(taskForm.maxRetryCount),
-    })
+    const payload = buildTaskPayload()
+    const task = editingTask.value
+      ? await jobApi.updateJobTask(jobId, editingTask.value.id, payload)
+      : await jobApi.createJobTask(jobId, payload)
     createTaskVisible.value = false
     await loadTasks()
-    AxMessage.success(`任务「${task.name}」创建成功`)
+    AxMessage.success(`任务「${task.name}」${editingTask.value ? '更新' : '创建'}成功`)
   } catch (err) {
-    AxMessage.error(`创建失败：${err.message}`)
+    AxMessage.error(`${editingTask.value ? '更新' : '创建'}失败：${err.message}`)
   } finally {
     creatingTask.value = false
+  }
+}
+
+function openDeleteTask(task) {
+  deletingTask.value = task
+  deleteTaskVisible.value = true
+}
+
+async function onDeleteTask() {
+  if (!deletingTask.value) return
+  deletingTaskLoading.value = true
+  try {
+    await jobApi.deleteJobTask(jobId, deletingTask.value.id)
+    AxMessage.success(`任务「${deletingTask.value.name}」已删除`)
+    deleteTaskVisible.value = false
+    deletingTask.value = null
+    await loadTasks()
+  } catch (err) {
+    AxMessage.error(`删除失败：${err.message}`)
+  } finally {
+    deletingTaskLoading.value = false
   }
 }
 
@@ -280,13 +363,40 @@ onUnmounted(() => {
             <ax-text type="secondary" size="sm">任务按顺序号依次执行，前一步失败则中断后续任务。</ax-text>
             <ax-button type="primary" @click="openCreateTask">新建任务</ax-button>
           </ax-space>
-          <ax-table :columns="taskColumns" :data="tasks" empty-text="还没有任务，新建任务并绑定插件后作业才会真正执行" size="sm" striped>
+          <ax-table
+            v-model:sort-key="taskSort.key"
+            v-model:sort-order="taskSort.order"
+            :columns="taskColumns"
+            :data="tasks"
+            :empty-text="tasksLoading ? '加载中…' : '还没有任务，新建任务并绑定插件后作业才会真正执行'"
+            size="sm"
+            striped
+            @sort-change="onTaskSortChange"
+          >
             <template #cell-name="{ value }">
               <ax-text weight="medium">{{ value }}</ax-text>
             </template>
             <template #cell-handlerType="{ value }"><ax-text code ellipsis :text="value" /></template>
             <template #cell-pluginAssembly="{ value }"><ax-text code ellipsis :text="value" /></template>
+            <template #cell-actions="{ row }">
+              <ax-space size="sm">
+                <ax-link type="default" @click="openEditTask(row)">编辑</ax-link>
+                <ax-link type="danger" @click="openDeleteTask(row)">删除</ax-link>
+              </ax-space>
+            </template>
           </ax-table>
+
+          <div class="job-detail__pagination">
+            <ax-pagination
+              v-model:current="taskPagination.page"
+              v-model:page-size="taskPagination.pageSize"
+              :page-sizes="taskPagination.pageSizes"
+              :total="taskPagination.total"
+              show-total
+              show-size-changer
+              @change="onTaskPageChange"
+            />
+          </div>
         </ax-tab-pane>
 
         <ax-tab-pane name="executions" label="执行记录">
@@ -344,13 +454,12 @@ onUnmounted(() => {
   </ax-modal>
 
   <!-- 新建任务弹窗 -->
-  <ax-modal v-model="createTaskVisible" title="新建任务" width="var(--axis-container-sm)">
+  <ax-modal v-model="createTaskVisible" :title="editingTask ? '编辑任务' : '新建任务'" width="var(--axis-container-sm)">
     <ax-form
       ref="taskFormRef"
       :model="taskForm"
       :rules="taskRules"
-      label-position="top"
-      @submit="onCreateTask"
+      @submit="onSaveTask"
     >
       <ax-form-item label="任务名称" prop="name">
         <ax-input v-model="taskForm.name" placeholder="如：同步线索数据" clearable />
@@ -378,7 +487,15 @@ onUnmounted(() => {
     <!-- footer 用 AxModal 内置插槽承载，提交走表单 ref 校验 -->
     <template #footer>
       <ax-button @click="createTaskVisible = false">取消</ax-button>
-      <ax-button type="primary" :loading="creatingTask" @click="onCreateTask">创建</ax-button>
+      <ax-button type="primary" :loading="creatingTask" @click="onSaveTask">{{ editingTask ? '保存' : '创建' }}</ax-button>
+    </template>
+  </ax-modal>
+
+  <ax-modal v-model="deleteTaskVisible" title="删除任务">
+    <ax-text type="error" block>确认删除任务「{{ deletingTask?.name }}」？删除后新执行不会再运行该任务。</ax-text>
+    <template #footer>
+      <ax-button @click="deleteTaskVisible = false">取消</ax-button>
+      <ax-button type="danger" :loading="deletingTaskLoading" @click="onDeleteTask">删除</ax-button>
     </template>
   </ax-modal>
 </template>
@@ -400,5 +517,11 @@ onUnmounted(() => {
 
 .job-detail__toolbar {
   margin-bottom: var(--axis-space-3);
+}
+
+.job-detail__pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--axis-space-4);
 }
 </style>

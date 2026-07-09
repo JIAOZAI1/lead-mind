@@ -50,8 +50,7 @@ src/
 │   └── index.js
 ├── utils/        # 纯工具函数
 │   ├── authSession.js    # 会话持久化（记住我 → localStorage / 否则 sessionStorage）
-│   ├── datetime.js       # 后端 UTC 时间解析（兼容缺失 Z 后缀）与本地化格式化
-│   └── knownJobIds.js    # 本地已知作业 ID 存储（后端暂无作业列表接口的过渡方案）
+│   └── datetime.js       # 后端 UTC 时间解析（兼容缺失 Z 后缀）与本地化格式化
 ├── views/        # 页面级组件（与路由一一对应）
 │   ├── LoginPage.vue             # /login 登录页
 │   ├── RegisterPage.vue          # /register 注册页
@@ -74,8 +73,8 @@ src/
 | 会话管理 | `src/api/http.js` | access token 15 分钟过期后由 refresh token 静默续期（单飞防并发、token 轮换）；refresh token 也失效时自动清会话回登录页；退出登录同步作废后端 refresh token |
 | 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
 | 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
-| 后台作业 | `/jobs` → `JobsPage.vue` | 对接 backend-job-service：作业列表（后端暂无列表接口，展示本浏览器创建/添加过的作业并支持按 ID 添加）、新建作业（Cron 周期 / 一次性调度，前端校验与后端约束一致） |
-| 作业详情 | `/jobs/:jobId` → `JobDetailPage.vue` | 作业信息与最新执行状态（5 秒自动轮询）；任务编排（按顺序绑定插件 Handler，配置参数 JSON / 超时 / 重试）；执行记录（可选条数、任务级明细弹窗展示输出与错误） |
+| 后台作业 | `/jobs` → `JobsPage.vue` | 对接 backend-job-service：作业分页列表（支持点击表头按 ID / 名称 / 状态 / 下次执行 / 创建时间服务端排序）、新建作业（Cron 周期 / 一次性调度，前端校验与后端约束一致） |
+| 作业详情 | `/jobs/:jobId` → `JobDetailPage.vue` | 作业信息与最新执行状态（5 秒自动轮询）；任务编排（服务端分页 + 按顺序号 / 名称排序，按顺序绑定插件 Handler，配置参数 JSON / 超时 / 重试）；执行记录（可选条数、任务级明细弹窗展示输出与错误） |
 | 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/jobs`、`/jobs/:jobId`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回；页面标题跟随路由，详情页经 `meta.menuKey` 保持所属菜单高亮 |
 
 ## 后端接口
@@ -163,7 +162,12 @@ kubectl rollout restart deployment/lead-mind
   - 顶栏用户信息改为后端真实字段（用户名 + 邮箱提示），移除模拟的角色/租户
   - 同源代理规避跨域（后端网关未处理 CORS 预检）：本地开发走 vite `server.proxy`，部署环境前端 Ingress 加 `/sso-service` 路径直达后端 Service
   - 后端网关接入 CORS 白名单后改为直连：生产构建经 `.env.production` 的 `VITE_API_ORIGIN` 直连后端域名，前端 Ingress 移除 `/sso-service` 直达 Service 的规则；本地开发保留 vite 代理（`localhost:5173` 不在网关白名单）
-  - 新增「后台作业」一级菜单，对接 backend-job-service：作业列表页 `/jobs`（新建 Cron/一次性作业、按 ID 添加；后端暂无列表接口，列表为本地已知作业 ID 的过渡方案）+ 作业详情页 `/jobs/:jobId`（任务编排、执行记录、最新执行状态 5 秒轮询）；新增 `api/jobApi.js`、`utils/datetime.js`、`utils/knownJobIds.js`，统一请求层错误兼容 ASP.NET ProblemDetails 格式
+  - 新增「后台作业」一级菜单，对接 backend-job-service：作业列表页 `/jobs`（新建 Cron/一次性作业）+ 作业详情页 `/jobs/:jobId`（任务编排、执行记录、最新执行状态 5 秒轮询）；新增 `api/jobApi.js`、`utils/datetime.js`，统一请求层错误兼容 ASP.NET ProblemDetails 格式
 - **2026-07-10**
   - 优化后台作业页面视觉规范：列表页与详情页优先复用 axis-ui 的 AxCard 标题/extra、AxTable 紧凑尺寸、AxTag、AxTabs、AxModal 等组件能力，仅保留必要布局与长文本处理样式
   - axis-ui 升级至 0.4.0：新增 AxDescriptions / AxSpace / AxText / AxTitle；后台作业列表与详情页改用 AxSpace 管理操作区间距、AxText 管理辅助/代码/错误文本、AxDescriptions 展示作业详情信息，进一步减少页面级样式
+  - 作业列表改为调用 backend-job-service 服务端分页查询接口，移除本地已知作业 ID 过渡方案与按 ID 添加入口
+  - axis-ui 升级至 0.4.1：AxPagination 支持每页条数切换与 `v-model` 同步，后台作业列表启用 `show-size-changer` 和 `pageSizes`
+  - 后台作业支持更新与删除：列表页可编辑/删除作业；详情页只保留返回列表和子资源管理，任务编排支持编辑/删除任务
+  - axis-ui 升级至 0.4.2：AxTable 支持受控表头排序（`sortKey`/`sortOrder` + `sort-change`，点击循环 升序→降序→取消）
+  - 后台作业列表接入服务端字段排序（ID / 名称 / 状态 / 下次执行 / 创建时间，`sortBy`/`sortOrder` 白名单契约）；详情页任务列表随后端改造接入服务端分页 + 排序（顺序号 / 名称，默认按顺序号升序与执行顺序一致），新增分页器与每页条数切换

@@ -1,88 +1,76 @@
 <script setup>
-// 后台作业列表：展示本浏览器已知的作业 + 新建作业 + 按 ID 添加已有作业
-// 后端暂无「作业列表」接口（只能按 ID 查询），列表由 localStorage 里记录的 ID 逐个拉详情拼出，
-// 后端补列表接口后可去掉 knownJobIds 这层
+// 后台作业列表：服务端分页查询 + 新建作业
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { AxMessage } from '@jiaozai1/axis-ui'
 import { jobApi, SCHEDULE_TYPE, SCHEDULE_TYPE_META, JOB_STATUS_META } from '../api/jobApi'
-import { ApiError } from '../api/http'
 import { formatDateTime } from '../utils/datetime'
-import { loadKnownJobIds, addKnownJobId, removeKnownJobId } from '../utils/knownJobIds'
 
 const router = useRouter()
 
 const jobs = ref([])
 const loading = ref(false)
+const pagination = reactive({
+  page: 1,
+  pageSize: 20,
+  pageSizes: [10, 20, 50, 100],
+  total: 0,
+})
+
+// 服务端排序状态：sortable 列与后端可排序白名单一一对应（调度方式为组合列，后端无对应字段）
+const sort = reactive({ key: 'id', order: 'desc' })
 
 const columns = [
-  { key: 'id', title: 'ID', align: 'center' },
-  { key: 'name', title: '作业名称' },
+  { key: 'id', title: 'ID', align: 'center', sortable: true },
+  { key: 'name', title: '作业名称', sortable: true },
   { key: 'schedule', title: '调度方式' },
-  { key: 'status', title: '状态', align: 'center' },
-  { key: 'nextRunAt', title: '下次执行时间' },
-  { key: 'createdAt', title: '创建时间' },
+  { key: 'status', title: '状态', align: 'center', sortable: true },
+  { key: 'nextRunAt', title: '下次执行时间', sortable: true },
+  { key: 'createdAt', title: '创建时间', sortable: true },
   { key: 'actions', title: '操作', align: 'center' },
 ]
 
-/** 按本地记录的 ID 并发拉取作业详情；已被后端删除（404）的自动从本地记录清理 */
-async function loadJobs() {
+async function loadJobs(page = pagination.page) {
   loading.value = true
-  const ids = loadKnownJobIds()
-  const results = await Promise.allSettled(ids.map((id) => jobApi.getJob(id)))
-  const list = []
-  let failed = 0
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') {
-      list.push(result.value)
-    } else if (result.reason instanceof ApiError && result.reason.status === 404) {
-      removeKnownJobId(ids[index])
-    } else {
-      failed += 1
-    }
-  })
-  jobs.value = list.sort((a, b) => b.id - a.id)
-  loading.value = false
-  if (failed > 0) AxMessage.error(`${failed} 个作业加载失败，请稍后刷新重试`)
+  try {
+    const result = await jobApi.listJobs({
+      page,
+      pageSize: pagination.pageSize,
+      // 第三次点击表头会清空排序（key 为空），此时回落到默认的 id 倒序
+      sortBy: sort.key || 'id',
+      sortOrder: sort.order || 'desc',
+    })
+    jobs.value = result.items
+    pagination.page = result.page ?? page
+    pagination.pageSize = result.pageSize ?? pagination.pageSize
+    pagination.total = result.total
+  } catch (err) {
+    AxMessage.error(`作业列表加载失败：${err.message}`)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(loadJobs)
 
-// ---- 按 ID 添加已有作业 ----
-const importJobId = ref('')
-const importing = ref(false)
-
-async function onImportJob() {
-  const id = Number(importJobId.value)
-  if (!Number.isInteger(id) || id <= 0) {
-    AxMessage.warning('请输入正确的作业 ID（正整数）')
-    return
-  }
-  importing.value = true
-  try {
-    const job = await jobApi.getJob(id)
-    addKnownJobId(job.id)
-    importJobId.value = ''
-    await loadJobs()
-    AxMessage.success(`已添加作业「${job.name}」`)
-  } catch (err) {
-    AxMessage.error(err instanceof ApiError && err.status === 404 ? `作业 ${id} 不存在` : `添加失败：${err.message}`)
-  } finally {
-    importing.value = false
-  }
+function onPageChange(page, pageSize) {
+  pagination.pageSize = pageSize
+  loadJobs(page)
 }
 
-/** 仅从本地列表移除，不影响后端作业本身 */
-function onRemoveJob(job) {
-  removeKnownJobId(job.id)
-  jobs.value = jobs.value.filter((item) => item.id !== job.id)
-  AxMessage.info(`已从列表移除「${job.name}」（后端作业不受影响）`)
+// 排序变化后回到第一页重新查询
+function onSortChange() {
+  loadJobs(1)
 }
 
 // ---- 新建作业 ----
 const createVisible = ref(false)
 const creating = ref(false)
 const createFormRef = ref(null)
+const editingJob = ref(null)
+const deletingJob = ref(null)
+const deleteVisible = ref(false)
+const deleting = ref(false)
 
 const createForm = reactive({
   name: '',
@@ -90,6 +78,7 @@ const createForm = reactive({
   scheduleType: SCHEDULE_TYPE.CRON,
   cronExpression: '',
   runAt: '',
+  status: 1,
 })
 
 // cron / 一次性时间按当前调度类型二选一必填，切换类型后另一个字段不参与校验
@@ -114,75 +103,104 @@ const createRules = computed(() => ({
 }))
 
 function openCreateModal() {
+  editingJob.value = null
   createForm.name = ''
   createForm.description = ''
   createForm.scheduleType = SCHEDULE_TYPE.CRON
   createForm.cronExpression = ''
   createForm.runAt = ''
+  createForm.status = 1
   createVisible.value = true
 }
 
-async function onCreateJob() {
+function openEditModal(row) {
+  editingJob.value = row
+  createForm.name = row.name
+  createForm.description = row.description ?? ''
+  createForm.scheduleType = row.scheduleType
+  createForm.cronExpression = row.cronExpression ?? ''
+  createForm.runAt = row.runAt ? new Date(row.runAt).toISOString().slice(0, 16) : ''
+  createForm.status = row.status
+  createVisible.value = true
+}
+
+function buildJobPayload() {
+  const isCron = createForm.scheduleType === SCHEDULE_TYPE.CRON
+  const payload = {
+    name: createForm.name.trim(),
+    description: createForm.description.trim(),
+    scheduleType: createForm.scheduleType,
+    cronExpression: isCron ? createForm.cronExpression.trim() : undefined,
+    runAt: isCron ? undefined : new Date(createForm.runAt).toISOString(),
+  }
+  if (editingJob.value) payload.status = createForm.status
+  return payload
+}
+
+async function onSaveJob() {
   if (!(await createFormRef.value.validate())) return
   creating.value = true
   try {
-    const isCron = createForm.scheduleType === SCHEDULE_TYPE.CRON
-    const job = await jobApi.createJob({
-      name: createForm.name.trim(),
-      description: createForm.description.trim(),
-      scheduleType: createForm.scheduleType,
-      // 后端校验两字段与调度类型严格互斥，未用到的必须不传
-      cronExpression: isCron ? createForm.cronExpression.trim() : undefined,
-      // datetime-local 取到的是本地时间，转成 UTC ISO 串提交
-      runAt: isCron ? undefined : new Date(createForm.runAt).toISOString(),
-    })
-    addKnownJobId(job.id)
+    const payload = buildJobPayload()
+    const job = editingJob.value
+      ? await jobApi.updateJob(editingJob.value.id, payload)
+      : await jobApi.createJob(payload)
     createVisible.value = false
-    await loadJobs()
-    AxMessage.success(`作业「${job.name}」创建成功，可进入详情配置任务`)
+    await loadJobs(editingJob.value ? pagination.page : 1)
+    AxMessage.success(`作业「${job.name}」${editingJob.value ? '更新' : '创建'}成功`)
   } catch (err) {
-    AxMessage.error(`创建失败：${err.message}`)
+    AxMessage.error(`${editingJob.value ? '更新' : '创建'}失败：${err.message}`)
   } finally {
     creating.value = false
+  }
+}
+
+async function onDeleteJob() {
+  if (!deletingJob.value) return
+  deleting.value = true
+  try {
+    await jobApi.deleteJob(deletingJob.value.id)
+    AxMessage.success(`作业「${deletingJob.value.name}」已删除`)
+    deletingJob.value = null
+    deleteVisible.value = false
+    await loadJobs(pagination.page)
+  } catch (err) {
+    AxMessage.error(`删除失败：${err.message}`)
+  } finally {
+    deleting.value = false
   }
 }
 
 function goDetail(job) {
   router.push({ name: 'job-detail', params: { jobId: job.id } })
 }
+
+function openDeleteModal(row) {
+  deletingJob.value = row
+  deleteVisible.value = true
+}
 </script>
 
 <template>
   <section class="jobs-page">
-    <ax-alert
-      class="jobs-page__notice"
-      type="info"
-      title="列表为本地记录"
-      description="作业服务暂未提供列表查询接口，此处仅展示本浏览器创建过或按 ID 添加过的作业。"
-      closable
-    />
-
     <ax-card title="后台作业" borderless>
       <template #extra>
         <ax-space size="sm">
-          <ax-button :disabled="loading" @click="loadJobs">刷新</ax-button>
+          <ax-button :disabled="loading" @click="loadJobs()">刷新</ax-button>
           <ax-button type="primary" @click="openCreateModal">新建作业</ax-button>
         </ax-space>
       </template>
-      <div class="jobs-page__toolbar">
-        <ax-space size="sm" wrap>
-          <ax-input
-            v-model="importJobId"
-            class="jobs-page__import-input"
-            placeholder="输入作业 ID 添加"
-            clearable
-            @keyup.enter="onImportJob"
-          />
-          <ax-button :loading="importing" @click="onImportJob">添加</ax-button>
-        </ax-space>
-      </div>
 
-      <ax-table :columns="columns" :data="jobs" :empty-text="loading ? '加载中…' : '暂无作业，点击右上角新建'" size="sm" striped>
+      <ax-table
+        v-model:sort-key="sort.key"
+        v-model:sort-order="sort.order"
+        :columns="columns"
+        :data="jobs"
+        :empty-text="loading ? '加载中…' : '暂无作业，点击右上角新建'"
+        size="sm"
+        striped
+        @sort-change="onSortChange"
+      >
         <template #cell-id="{ value }">
           <ax-text code>{{ value }}</ax-text>
         </template>
@@ -210,20 +228,32 @@ function goDetail(job) {
         <template #cell-actions="{ row }">
           <ax-space size="sm">
             <ax-link @click="goDetail(row)">详情</ax-link>
-            <ax-link type="default" size="sm" @click="onRemoveJob(row)">移除</ax-link>
+            <ax-link type="default" @click="openEditModal(row)">编辑</ax-link>
+            <ax-link type="danger" @click="openDeleteModal(row)">删除</ax-link>
           </ax-space>
         </template>
       </ax-table>
+
+      <div class="jobs-page__pagination">
+        <ax-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="pagination.pageSizes"
+          :total="pagination.total"
+          show-total
+          show-size-changer
+          @change="onPageChange"
+        />
+      </div>
     </ax-card>
   </section>
 
-  <ax-modal v-model="createVisible" title="新建作业">
+  <ax-modal v-model="createVisible" :title="editingJob ? '编辑作业' : '新建作业'">
     <ax-form
       ref="createFormRef"
       :model="createForm"
       :rules="createRules"
-      label-position="top"
-      @submit="onCreateJob"
+      @submit="onSaveJob"
     >
       <ax-form-item label="作业名称" prop="name">
         <ax-input v-model="createForm.name" placeholder="如：每日线索同步" clearable />
@@ -237,6 +267,12 @@ function goDetail(job) {
           <ax-radio :value="SCHEDULE_TYPE.ONE_TIME">一次性</ax-radio>
         </ax-radio-group>
       </ax-form-item>
+      <ax-form-item v-if="editingJob" label="状态" prop="status">
+        <ax-radio-group v-model="createForm.status">
+          <ax-radio :value="1">启用</ax-radio>
+          <ax-radio :value="2">停用</ax-radio>
+        </ax-radio-group>
+      </ax-form-item>
       <ax-form-item v-if="createForm.scheduleType === SCHEDULE_TYPE.CRON" label="Cron 表达式" prop="cronExpression">
         <ax-input v-model="createForm.cronExpression" placeholder="*/5 * * * *（分 时 日 月 周）" />
       </ax-form-item>
@@ -248,25 +284,29 @@ function goDetail(job) {
     <!-- footer 用 AxModal 内置插槽承载，布局与内边距由组件提供，提交走表单 ref 校验 -->
     <template #footer>
       <ax-button @click="createVisible = false">取消</ax-button>
-      <ax-button type="primary" :loading="creating" @click="onCreateJob">创建</ax-button>
+      <ax-button type="primary" :loading="creating" @click="onSaveJob">{{ editingJob ? '保存' : '创建' }}</ax-button>
+    </template>
+  </ax-modal>
+
+  <ax-modal v-model="deleteVisible" title="删除作业">
+    <ax-text type="error" block>确认删除作业「{{ deletingJob?.name }}」？删除后列表和调度将不再包含该作业。</ax-text>
+    <template #footer>
+      <ax-button @click="deleteVisible = false">取消</ax-button>
+      <ax-button type="danger" :loading="deleting" @click="onDeleteJob">删除</ax-button>
     </template>
   </ax-modal>
 </template>
 
 <style scoped>
 .jobs-page {
-  --jobs-import-input-width: calc(var(--axis-container-sm) * 0.3);
   display: flex;
   flex-direction: column;
   gap: var(--axis-space-4);
 }
 
-.jobs-page__toolbar {
-  margin-bottom: var(--axis-space-4);
-}
-
-.jobs-page__import-input {
-  min-width: var(--axis-space-16);
-  width: var(--jobs-import-input-width);
+.jobs-page__pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--axis-space-4);
 }
 </style>
