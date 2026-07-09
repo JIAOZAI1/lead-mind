@@ -3,7 +3,7 @@ import { loadSession, patchSession, clearSession } from '../utils/authSession'
 
 // 后端网关地址：生产构建直连后端域名（跨域由网关 CORS 白名单放行，见 .env.production）；
 // 本地开发留空走相对路径，由 vite proxy 转发——vite 默认端口 5173 不在网关 CORS 白名单内
-const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? ''
+export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? ''
 
 export const SSO_AUTH_BASE = `${API_ORIGIN}/sso-service/api/v1/auth`
 
@@ -29,7 +29,8 @@ async function rawRequest(path, { method = 'GET', body, token } = {}) {
 
   if (res.status === 204) return null
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? `HTTP ${res.status}`)
+  // 错误体两种格式：业务错误 { error }；ASP.NET 参数绑定失败返回 ProblemDetails { title, errors }
+  if (!res.ok) throw new ApiError(res.status, data?.error ?? data?.title ?? `HTTP ${res.status}`)
   return data
 }
 

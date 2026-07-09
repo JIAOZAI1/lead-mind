@@ -35,7 +35,8 @@ scripts/
 src/
 ├── api/          # 接口封装
 │   ├── http.js           # 统一请求层：JSON 编解码、错误规整、401 自动续期（refresh token 单飞轮换）
-│   └── authApi.js        # sso-service 认证接口（注册/登录/注销/用户信息）+ 错误文案中文化
+│   ├── authApi.js        # sso-service 认证接口（注册/登录/注销/用户信息）+ 错误文案中文化
+│   └── jobApi.js         # backend-job-service 作业调度接口（作业/任务/执行记录/状态轮询）+ 枚举展示元数据
 ├── assets/       # 全局样式（main.css：全局基础样式，消费 axis-ui Token）
 ├── components/   # 业务公共组件
 │   └── AuthPageShell.vue # 认证页共享外壳：居中卡片 + Logo + 主题切换
@@ -48,11 +49,15 @@ src/
 ├── router/       # 路由配置（vue-router 4，history 模式 + 登录守卫）
 │   └── index.js
 ├── utils/        # 纯工具函数
-│   └── authSession.js    # 会话持久化（记住我 → localStorage / 否则 sessionStorage）
+│   ├── authSession.js    # 会话持久化（记住我 → localStorage / 否则 sessionStorage）
+│   ├── datetime.js       # 后端 UTC 时间解析（兼容缺失 Z 后缀）与本地化格式化
+│   └── knownJobIds.js    # 本地已知作业 ID 存储（后端暂无作业列表接口的过渡方案）
 ├── views/        # 页面级组件（与路由一一对应）
 │   ├── LoginPage.vue             # /login 登录页
 │   ├── RegisterPage.vue          # /register 注册页
 │   ├── DashboardPage.vue         # /dashboard 工作台
+│   ├── JobsPage.vue              # /jobs 后台作业列表
+│   ├── JobDetailPage.vue         # /jobs/:jobId 作业详情（任务编排 + 执行记录 + 状态轮询）
 │   └── UnderConstructionPage.vue # 未开发模块共用占位页
 ├── App.vue       # 根组件：仅渲染路由出口
 └── main.js       # 入口：注册 axis-ui + router 并引入样式
@@ -67,9 +72,11 @@ src/
 | 登录 | `src/views/LoginPage.vue` | 对接 sso-service 真实登录：账号/密码登录换取 JWT token 对，`/me` 拉取用户信息；AxForm 声明式校验，记住我（勾选存 localStorage，否则关标签页即失效）、注册入口，接口错误中文提示 |
 | 注册 | `src/views/RegisterPage.vue` | 对接 sso-service 注册：用户名/邮箱/密码/确认密码，校验规则与后端约束一致（用户名 3~64、密码 8~128、邮箱格式、两次密码一致），注册成功自动登录进工作台 |
 | 会话管理 | `src/api/http.js` | access token 15 分钟过期后由 refresh token 静默续期（单飞防并发、token 轮换）；refresh token 也失效时自动清会话回登录页；退出登录同步作废后端 refresh token |
-| 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
+| 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
 | 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
-| 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回；页面标题跟随路由 |
+| 后台作业 | `/jobs` → `JobsPage.vue` | 对接 backend-job-service：作业列表（后端暂无列表接口，展示本浏览器创建/添加过的作业并支持按 ID 添加）、新建作业（Cron 周期 / 一次性调度，前端校验与后端约束一致） |
+| 作业详情 | `/jobs/:jobId` → `JobDetailPage.vue` | 作业信息与最新执行状态（5 秒自动轮询）；任务编排（按顺序绑定插件 Handler，配置参数 JSON / 超时 / 重试）；执行记录（可选条数、任务级明细弹窗展示输出与错误） |
+| 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/jobs`、`/jobs/:jobId`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回；页面标题跟随路由，详情页经 `meta.menuKey` 保持所属菜单高亮 |
 
 ## 后端接口
 
@@ -78,7 +85,10 @@ src/
 - **部署环境**：浏览器直连后端网关域名（`.env.production` 注入 `VITE_API_ORIGIN`），`lead-mind.dev.com` 在 CORS 白名单内
 - **本地开发**：走 vite dev server 代理到后端网关（见 `vite.config.js` 的 `server.proxy`，服务端转发不受 CORS 限制）——vite 默认端口 `localhost:5173` 不在网关白名单内，故不直连
 
-已接入服务：[sso-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/sso-service/README.md)（注册 / 登录 / 续期 / 注销 / 用户信息，JWT 双 token：access 15 分钟 + refresh 7 天轮换）
+已接入服务：
+
+- [sso-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/sso-service/README.md)：注册 / 登录 / 续期 / 注销 / 用户信息，JWT 双 token（access 15 分钟 + refresh 7 天轮换）
+- [backend-job-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/backend-job-service/README.md)：作业调度（Cron / 一次性）、任务编排（插件 Handler）、执行记录与状态轮询；枚举字段用数字收发（后端未注册字符串枚举转换器），部分时间字段缺 UTC 时区后缀由前端统一补齐解析
 
 ## Docker 部署
 
@@ -153,3 +163,7 @@ kubectl rollout restart deployment/lead-mind
   - 顶栏用户信息改为后端真实字段（用户名 + 邮箱提示），移除模拟的角色/租户
   - 同源代理规避跨域（后端网关未处理 CORS 预检）：本地开发走 vite `server.proxy`，部署环境前端 Ingress 加 `/sso-service` 路径直达后端 Service
   - 后端网关接入 CORS 白名单后改为直连：生产构建经 `.env.production` 的 `VITE_API_ORIGIN` 直连后端域名，前端 Ingress 移除 `/sso-service` 直达 Service 的规则；本地开发保留 vite 代理（`localhost:5173` 不在网关白名单）
+  - 新增「后台作业」一级菜单，对接 backend-job-service：作业列表页 `/jobs`（新建 Cron/一次性作业、按 ID 添加；后端暂无列表接口，列表为本地已知作业 ID 的过渡方案）+ 作业详情页 `/jobs/:jobId`（任务编排、执行记录、最新执行状态 5 秒轮询）；新增 `api/jobApi.js`、`utils/datetime.js`、`utils/knownJobIds.js`，统一请求层错误兼容 ASP.NET ProblemDetails 格式
+- **2026-07-10**
+  - 优化后台作业页面视觉规范：列表页与详情页优先复用 axis-ui 的 AxCard 标题/extra、AxTable 紧凑尺寸、AxTag、AxTabs、AxModal 等组件能力，仅保留必要布局与长文本处理样式
+  - axis-ui 升级至 0.4.0：新增 AxDescriptions / AxSpace / AxText / AxTitle；后台作业列表与详情页改用 AxSpace 管理操作区间距、AxText 管理辅助/代码/错误文本、AxDescriptions 展示作业详情信息，进一步减少页面级样式

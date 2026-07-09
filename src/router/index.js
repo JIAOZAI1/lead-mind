@@ -6,6 +6,8 @@ import AppLayout from '../layouts/AppLayout.vue'
 const LoginPage = () => import('../views/LoginPage.vue')
 const RegisterPage = () => import('../views/RegisterPage.vue')
 const DashboardPage = () => import('../views/DashboardPage.vue')
+const JobsPage = () => import('../views/JobsPage.vue')
+const JobDetailPage = () => import('../views/JobDetailPage.vue')
 const UnderConstructionPage = () => import('../views/UnderConstructionPage.vue')
 
 const router = createRouter({
@@ -24,6 +26,9 @@ const router = createRouter({
         { path: 'leads/search', name: 'lead-search', component: UnderConstructionPage, meta: { title: '线索搜索' } },
         { path: 'leads/mine', name: 'my-leads', component: UnderConstructionPage, meta: { title: '我的线索' } },
         { path: 'ai-assistant', name: 'ai-assistant', component: UnderConstructionPage, meta: { title: 'AI 助手' } },
+        { path: 'jobs', name: 'jobs', component: JobsPage, meta: { title: '后台作业' } },
+        // 详情页不在菜单里，menuKey 指回「后台作业」保持菜单高亮
+        { path: 'jobs/:jobId(\\d+)', name: 'job-detail', component: JobDetailPage, meta: { title: '作业详情', menuKey: 'jobs' } },
         { path: 'settings', name: 'settings', component: UnderConstructionPage, meta: { title: '系统设置' } },
       ],
     },

@@ -17,6 +17,7 @@ export const menuItems = [
     ],
   },
   { key: 'ai-assistant', label: 'AI 助手' },
+  { key: 'jobs', label: '后台作业' },
   { key: 'settings', label: '系统设置' },
 ]
 
@@ -26,8 +27,9 @@ export function useNavigation() {
 
   // 菜单选中态与路由双向绑定：读 = 当前路由名，写 = 触发路由跳转
   // 这样浏览器前进/后退、直链访问时菜单高亮都能自动对上
+  // 详情页等子页面不在菜单里，通过路由 meta.menuKey 指回所属的一级菜单保持高亮
   const activeMenu = computed({
-    get: () => route.name,
+    get: () => route.meta.menuKey ?? route.name,
     set: (name) => router.push({ name }),
   })
 

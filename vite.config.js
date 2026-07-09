@@ -22,6 +22,10 @@ export default defineConfig({
         target: 'http://lead-mind-backend.dev.com',
         changeOrigin: true,
       },
+      '/backend-job-service': {
+        target: 'http://lead-mind-backend.dev.com',
+        changeOrigin: true,
+      },
     },
   },
 })
