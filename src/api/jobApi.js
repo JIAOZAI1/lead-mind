@@ -112,9 +112,10 @@ export const jobApi = {
     return request(`${JOB_BASE}/jobs/${jobId}/tasks?${query}`).then(normalizePagedResult)
   },
 
-  /** 查询作业执行历史，limit 默认 20、最大 200 */
-  listExecutions(jobId, limit = 20) {
-    return request(`${JOB_BASE}/jobs/${jobId}/executions?limit=${limit}`)
+  /** 分页查询作业执行历史；后端固定按触发时间倒序，不支持自定义排序字段 */
+  listExecutions(jobId, { page = 1, pageSize = 20 } = {}) {
+    const query = buildPagedQuery({ page, pageSize })
+    return request(`${JOB_BASE}/jobs/${jobId}/executions?${query}`).then(normalizePagedResult)
   },
 
   /** 作业状态聚合视图（作业状态 + 最近一次执行及其任务状态），后端专供前端轮询 */

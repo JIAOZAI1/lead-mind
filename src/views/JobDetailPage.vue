@@ -99,15 +99,15 @@ const taskNameById = computed(() =>
   Object.fromEntries(tasks.value.map((task) => [task.id, task.name])),
 )
 
-// ---- 执行记录 ----
+// ---- 执行记录（服务端分页，后端固定按触发时间倒序、不支持排序字段）----
 const executions = ref([])
 const executionsLoading = ref(false)
-const executionLimit = ref(20)
-const limitOptions = [
-  { label: '最近 20 条', value: 20 },
-  { label: '最近 50 条', value: 50 },
-  { label: '最近 200 条', value: 200 },
-]
+const executionPagination = reactive({
+  page: 1,
+  pageSize: 20,
+  pageSizes: [10, 20, 50, 100],
+  total: 0,
+})
 const executionColumns = [
   { key: 'id', title: '执行 ID', align: 'center' },
   { key: 'status', title: '状态', align: 'center' },
@@ -117,15 +117,27 @@ const executionColumns = [
   { key: 'actions', title: '操作', align: 'center' },
 ]
 
-async function loadExecutions() {
+async function loadExecutions(page = executionPagination.page) {
   executionsLoading.value = true
   try {
-    executions.value = await jobApi.listExecutions(jobId, executionLimit.value)
+    const result = await jobApi.listExecutions(jobId, {
+      page,
+      pageSize: executionPagination.pageSize,
+    })
+    executions.value = result.items
+    executionPagination.page = result.page ?? page
+    executionPagination.pageSize = result.pageSize ?? executionPagination.pageSize
+    executionPagination.total = result.total
   } catch (err) {
     AxMessage.error(`执行记录加载失败：${err.message}`)
   } finally {
     executionsLoading.value = false
   }
+}
+
+function onExecutionPageChange(page, pageSize) {
+  executionPagination.pageSize = pageSize
+  loadExecutions(page)
 }
 
 // ---- 执行详情弹窗（列表数据已含任务明细，无需再请求） ----
@@ -402,10 +414,7 @@ onUnmounted(() => {
         <ax-tab-pane name="executions" label="执行记录">
           <ax-space class="job-detail__toolbar" block justify="space-between" wrap>
             <ax-text type="secondary" size="sm">按触发时间倒序查看历史执行。</ax-text>
-            <ax-space size="sm">
-              <ax-select v-model="executionLimit" :options="limitOptions" size="sm" @change="loadExecutions" />
-              <ax-button :disabled="executionsLoading" @click="loadExecutions">刷新</ax-button>
-            </ax-space>
+            <ax-button :disabled="executionsLoading" @click="loadExecutions()">刷新</ax-button>
           </ax-space>
           <ax-table
             :columns="executionColumns"
@@ -426,6 +435,18 @@ onUnmounted(() => {
               <ax-link @click="openExecutionDetail(row)">明细</ax-link>
             </template>
           </ax-table>
+
+          <div class="job-detail__pagination">
+            <ax-pagination
+              v-model:current="executionPagination.page"
+              v-model:page-size="executionPagination.pageSize"
+              :page-sizes="executionPagination.pageSizes"
+              :total="executionPagination.total"
+              show-total
+              show-size-changer
+              @change="onExecutionPageChange"
+            />
+          </div>
         </ax-tab-pane>
       </ax-tabs>
     </ax-card>

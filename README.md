@@ -74,7 +74,7 @@ src/
 | 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
 | 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
 | 后台作业 | `/jobs` → `JobsPage.vue` | 对接 backend-job-service：作业分页列表（支持点击表头按 ID / 名称 / 状态 / 下次执行 / 创建时间服务端排序）、新建作业（Cron 周期 / 一次性调度，前端校验与后端约束一致） |
-| 作业详情 | `/jobs/:jobId` → `JobDetailPage.vue` | 作业信息与最新执行状态（5 秒自动轮询）；任务编排（服务端分页 + 按顺序号 / 名称排序，按顺序绑定插件 Handler，配置参数 JSON / 超时 / 重试）；执行记录（可选条数、任务级明细弹窗展示输出与错误） |
+| 作业详情 | `/jobs/:jobId` → `JobDetailPage.vue` | 作业信息与最新执行状态（5 秒自动轮询）；任务编排（服务端分页 + 按顺序号 / 名称排序，按顺序绑定插件 Handler，配置参数 JSON / 超时 / 重试）；执行记录（服务端分页、按触发时间倒序，任务级明细弹窗展示输出与错误） |
 | 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/jobs`、`/jobs/:jobId`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回；页面标题跟随路由，详情页经 `meta.menuKey` 保持所属菜单高亮 |
 
 ## 后端接口
@@ -171,3 +171,4 @@ kubectl rollout restart deployment/lead-mind
   - 后台作业支持更新与删除：列表页可编辑/删除作业；详情页只保留返回列表和子资源管理，任务编排支持编辑/删除任务
   - axis-ui 升级至 0.4.2：AxTable 支持受控表头排序（`sortKey`/`sortOrder` + `sort-change`，点击循环 升序→降序→取消）
   - 后台作业列表接入服务端字段排序（ID / 名称 / 状态 / 下次执行 / 创建时间，`sortBy`/`sortOrder` 白名单契约）；详情页任务列表随后端改造接入服务端分页 + 排序（顺序号 / 名称，默认按顺序号升序与执行顺序一致），新增分页器与每页条数切换
+  - 执行记录随后端改造从 limit 条数查询改为服务端分页（固定按触发时间倒序，后端不支持排序字段），条数下拉替换为分页器
