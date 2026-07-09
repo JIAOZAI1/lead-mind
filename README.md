@@ -172,3 +172,4 @@ kubectl rollout restart deployment/lead-mind
   - axis-ui 升级至 0.4.2：AxTable 支持受控表头排序（`sortKey`/`sortOrder` + `sort-change`，点击循环 升序→降序→取消）
   - 后台作业列表接入服务端字段排序（ID / 名称 / 状态 / 下次执行 / 创建时间，`sortBy`/`sortOrder` 白名单契约）；详情页任务列表随后端改造接入服务端分页 + 排序（顺序号 / 名称，默认按顺序号升序与执行顺序一致），新增分页器与每页条数切换
   - 执行记录随后端改造从 limit 条数查询改为服务端分页（固定按触发时间倒序，后端不支持排序字段），条数下拉替换为分页器
+  - 修复暗色主题刷新后丢失：主题选择持久化到 localStorage（`lead-mind:theme`），应用入口处恢复，避免懒加载页面就绪前闪烁亮色
