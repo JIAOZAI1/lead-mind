@@ -5,15 +5,19 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
 import { useNavigation } from '../composables/useNavigation'
+import { useWorkspaceTabs, HOME_TAB_KEY } from '../composables/useWorkspaceTabs'
 
 const router = useRouter()
 const { currentUser, logout } = useAuth()
 const { isDark, toggle: onToggleTheme } = useTheme()
 const { activeMenu, activeMenuLabel, menuItems, defaultOpenKeys } = useNavigation()
+// 多页签工作区：菜单级页面进页签，keep-alive 按打开的页签缓存页面状态
+const { openTabs, activeTab, closeTab, resetTabs, cachedViews } = useWorkspaceTabs()
 
-// 退出登录后回到登录页
+// 退出登录后回到登录页，同时清空工作区页签
 function onLogout() {
   logout()
+  resetTabs()
   router.push({ name: 'login' })
 }
 </script>
@@ -50,9 +54,26 @@ function onLogout() {
         </div>
       </header>
 
-      <!-- 内容区：渲染当前子路由对应的页面 -->
+      <!-- 页签栏：只渲染 AxTabs 的导航条作为页签，页面内容由下方 router-view 承载 -->
+      <div class="app-layout__tabs">
+        <ax-tabs v-model="activeTab" @close="closeTab">
+          <ax-tab-pane
+            v-for="tab in openTabs"
+            :key="tab.key"
+            :name="tab.key"
+            :label="tab.label"
+            :closable="tab.key !== HOME_TAB_KEY"
+          />
+        </ax-tabs>
+      </div>
+
+      <!-- 内容区：keep-alive 缓存已打开页签的页面，切换页签不丢失页内状态；关闭页签即释放缓存 -->
       <main class="app-layout__content">
-        <router-view />
+        <router-view v-slot="{ Component, route: currentRoute }">
+          <keep-alive :include="cachedViews">
+            <component :is="Component" :key="currentRoute.fullPath" />
+          </keep-alive>
+        </router-view>
       </main>
     </div>
   </div>
@@ -126,6 +147,22 @@ function onLogout() {
   font-size: var(--axis-font-size-base);
   color: var(--axis-color-text-primary);
   cursor: default;
+}
+
+/* ===== 页签栏 ===== */
+.app-layout__tabs {
+  padding: 0 var(--axis-space-6);
+  background: var(--axis-color-bg-container);
+  border-bottom: 1px solid var(--axis-color-border-split);
+}
+
+/* AxTabs 在这里只当页签导航条用：内容由 router-view 渲染，隐藏其自带的内容区与分隔线（分隔线由外层通栏边框接管） */
+.app-layout__tabs :deep(.ax-tabs__nav) {
+  border-bottom: none;
+}
+
+.app-layout__tabs :deep(.ax-tabs__content) {
+  display: none;
 }
 
 .app-layout__content {

@@ -43,9 +43,10 @@ src/
 ├── composables/  # 组合式函数
 │   ├── useAuth.js        # 登录态（对接 sso-service JWT 会话）
 │   ├── useTheme.js       # 亮/暗主题切换（全局单例）
-│   └── useNavigation.js  # 主导航菜单配置 + 选中态与路由双向绑定
+│   ├── useNavigation.js  # 主导航菜单配置 + 选中态与路由双向绑定
+│   └── useWorkspaceTabs.js # 多页签工作区状态（页签开关/切换/keep-alive 缓存/刷新恢复）
 ├── layouts/      # 布局组件
-│   └── AppLayout.vue     # 统一布局：侧边菜单 + 顶栏用户信息，内容区渲染子路由
+│   └── AppLayout.vue     # 统一布局：侧边菜单 + 顶栏用户信息 + 多页签栏，内容区渲染子路由
 ├── router/       # 路由配置（vue-router 4，history 模式 + 登录守卫）
 │   └── index.js
 ├── utils/        # 纯工具函数
@@ -72,6 +73,7 @@ src/
 | 注册 | `src/views/RegisterPage.vue` | 对接 sso-service 注册：用户名/邮箱/密码/确认密码，校验规则与后端约束一致（用户名 3~64、密码 8~128、邮箱格式、两次密码一致），注册成功自动登录进工作台 |
 | 会话管理 | `src/api/http.js` | access token 15 分钟过期后由 refresh token 静默续期（单飞防并发、token 轮换）；refresh token 也失效时自动清会话回登录页；退出登录同步作废后端 refresh token |
 | 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
+| 多页签工作区 | `src/composables/useWorkspaceTabs.js` | 点击菜单打开对应页签（AxTabs 导航条），切换页签经 keep-alive 保留页内状态（如列表分页/排序）；页签可关闭（工作台常驻不可关，关闭时释放页面缓存并跳相邻页签）；详情页归入所属菜单页签并记住最后访问位置；刷新后从 sessionStorage 恢复已打开页签，退出登录自动清空 |
 | 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
 | 后台作业 | `/jobs` → `JobsPage.vue` | 对接 backend-job-service：作业分页列表（支持点击表头按 ID / 名称 / 状态 / 下次执行 / 创建时间服务端排序）、新建作业（Cron 周期 / 一次性调度，前端校验与后端约束一致） |
 | 作业详情 | `/jobs/:jobId` → `JobDetailPage.vue` | 作业信息与最新执行状态（5 秒自动轮询）；任务编排（服务端分页 + 按顺序号 / 名称排序，按顺序绑定插件 Handler，配置参数 JSON / 超时 / 重试）；执行记录（服务端分页、按触发时间倒序，任务级明细弹窗展示输出与错误） |
@@ -174,3 +176,6 @@ kubectl rollout restart deployment/lead-mind
   - 执行记录随后端改造从 limit 条数查询改为服务端分页（固定按触发时间倒序，后端不支持排序字段），条数下拉替换为分页器
   - 修复暗色主题刷新后丢失：主题选择持久化到 localStorage（`lead-mind:theme`），应用入口处恢复，避免懒加载页面就绪前闪烁亮色
   - axis-ui 升级至 0.4.3：修复浏览器自动填充导致暗色主题下 AxInput 背景变白（UA autofill 样式用 inset 阴影 + 主题 Token 覆盖），登录/注册表单自动受益，无需业务代码改动
+  - axis-ui 升级至 0.4.4；新增多页签工作区：复用 AxTabs / AxTabPane（`closable` + `close` 事件）在顶栏下方渲染页签栏，菜单级页面点击即开页签，切换页签经 keep-alive 保留页内状态，关闭页签释放缓存，详情页归入所属菜单页签，刷新经 sessionStorage 恢复（新增 `composables/useWorkspaceTabs.js`，改造 `AppLayout.vue`）
+- **2026-07-13**
+  - axis-ui 升级至 0.4.5：修复 0.4.4 引入的 AxTabs 回归——pane 信息存入深层 `reactive` Map 时内部 ref 被自动解包，导致所有页签文字与关闭按钮不渲染（本项目定位根因并反馈 UI 团队修复）；同时修复 AxTabPane 未设 `closable` 时无法继承 Tabs 级 `closable` 的问题。多页签工作区与作业详情页「任务编排/执行记录」页签恢复正常
