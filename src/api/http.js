@@ -63,11 +63,13 @@ function refreshTokens(refreshToken) {
 /**
  * 发起请求
  * @param {string} path 接口路径（相对路径）
- * @param {{ method?: string, body?: object, auth?: boolean }} options auth=true 时自动携带 access token，
- *   收到 401 会用 refresh token 静默续期并重试一次
+ * @param {{ method?: string, body?: object, auth?: boolean }} options auth 默认 true：
+ *   网关对所有业务服务统一挂了 ForwardAuth 登录校验（见后端 deploy/k8s/gateway/），
+ *   请求默认携带 access token，收到 401 时用 refresh token 静默续期并重试一次；
+ *   仅登录/注册等匿名端点显式传 auth: false
  */
 export async function request(path, options = {}) {
-  const { auth = false, ...rest } = options
+  const { auth = true, ...rest } = options
   const session = loadSession()
   try {
     return await rawRequest(path, { ...rest, token: auth ? session?.accessToken : undefined })

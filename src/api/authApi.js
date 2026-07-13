@@ -17,32 +17,35 @@ export function translateAuthError(err, fallback) {
 }
 
 export const authApi = {
-  /** 注册新用户 → { id, username, email } */
+  /** 注册新用户 → { id, username, email }（匿名端点，不带 token） */
   register({ username, email, password }) {
     return request(`${SSO_AUTH_BASE}/register`, {
       method: 'POST',
       body: { username, email, password },
+      auth: false,
     })
   },
 
-  /** 登录 → { accessToken, refreshToken, tokenType, expiresIn } */
+  /** 登录 → { accessToken, refreshToken, tokenType, expiresIn }（匿名端点，不带 token） */
   login({ username, password }) {
     return request(`${SSO_AUTH_BASE}/login`, {
       method: 'POST',
       body: { username, password },
+      auth: false,
     })
   },
 
-  /** 注销：使 refresh token 即时失效 */
+  /** 注销：使 refresh token 即时失效（凭 refreshToken 本身注销，不带 access token） */
   logout(refreshToken) {
     return request(`${SSO_AUTH_BASE}/logout`, {
       method: 'POST',
       body: { refreshToken },
+      auth: false,
     })
   },
 
   /** 当前用户信息 → { id, username, email }（自动携带 access token） */
   fetchProfile() {
-    return request(`${SSO_AUTH_BASE}/me`, { auth: true })
+    return request(`${SSO_AUTH_BASE}/me`)
   },
 }

@@ -71,7 +71,7 @@ src/
 |------|------|------|
 | 登录 | `src/views/LoginPage.vue` | 对接 sso-service 真实登录：账号/密码登录换取 JWT token 对，`/me` 拉取用户信息；AxForm 声明式校验，记住我（勾选存 localStorage，否则关标签页即失效）、注册入口，接口错误中文提示 |
 | 注册 | `src/views/RegisterPage.vue` | 对接 sso-service 注册：用户名/邮箱/密码/确认密码，校验规则与后端约束一致（用户名 3~64、密码 8~128、邮箱格式、两次密码一致），注册成功自动登录进工作台 |
-| 会话管理 | `src/api/http.js` | access token 15 分钟过期后由 refresh token 静默续期（单飞防并发、token 轮换）；refresh token 也失效时自动清会话回登录页；退出登录同步作废后端 refresh token |
+| 会话管理 | `src/api/http.js` | 请求默认携带 access token（后端网关对所有业务服务统一挂 ForwardAuth 登录校验，仅登录/注册/续期/注销匿名可达）；access token 15 分钟过期后由 refresh token 静默续期（单飞防并发、token 轮换）；refresh token 也失效时自动清会话回登录页；退出登录同步作废后端 refresh token |
 | 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
 | 多页签工作区 | `src/composables/useWorkspaceTabs.js` | 点击菜单打开对应页签（AxTabs 导航条），切换页签经 keep-alive 保留页内状态（如列表分页/排序）；页签可关闭（工作台常驻不可关，关闭时释放页面缓存并跳相邻页签）；详情页归入所属菜单页签并记住最后访问位置；刷新后从 sessionStorage 恢复已打开页签，退出登录自动清空 |
 | 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
@@ -178,4 +178,5 @@ kubectl rollout restart deployment/lead-mind
   - axis-ui 升级至 0.4.3：修复浏览器自动填充导致暗色主题下 AxInput 背景变白（UA autofill 样式用 inset 阴影 + 主题 Token 覆盖），登录/注册表单自动受益，无需业务代码改动
   - axis-ui 升级至 0.4.4；新增多页签工作区：复用 AxTabs / AxTabPane（`closable` + `close` 事件）在顶栏下方渲染页签栏，菜单级页面点击即开页签，切换页签经 keep-alive 保留页内状态，关闭页签释放缓存，详情页归入所属菜单页签，刷新经 sessionStorage 恢复（新增 `composables/useWorkspaceTabs.js`，改造 `AppLayout.vue`）
 - **2026-07-13**
+  - 对齐后端网关登录校验（Traefik ForwardAuth 对所有业务服务统一校验 Bearer token）：统一请求层 `request` 的 `auth` 默认值翻转为 `true`，业务接口（含 jobApi 全部请求）默认携带 access token，仅注册/登录/注销等匿名端点显式关闭，避免新增接口漏带 token 被网关 401 拦截
   - axis-ui 升级至 0.4.5：修复 0.4.4 引入的 AxTabs 回归——pane 信息存入深层 `reactive` Map 时内部 ref 被自动解包，导致所有页签文字与关闭按钮不渲染（本项目定位根因并反馈 UI 团队修复）；同时修复 AxTabPane 未设 `closable` 时无法继承 Tabs 级 `closable` 的问题。多页签工作区与作业详情页「任务编排/执行记录」页签恢复正常
