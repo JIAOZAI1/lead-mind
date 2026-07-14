@@ -180,3 +180,6 @@ kubectl rollout restart deployment/lead-mind
 - **2026-07-13**
   - 对齐后端网关登录校验（Traefik ForwardAuth 对所有业务服务统一校验 Bearer token）：统一请求层 `request` 的 `auth` 默认值翻转为 `true`，业务接口（含 jobApi 全部请求）默认携带 access token，仅注册/登录/注销等匿名端点显式关闭，避免新增接口漏带 token 被网关 401 拦截
   - axis-ui 升级至 0.4.5：修复 0.4.4 引入的 AxTabs 回归——pane 信息存入深层 `reactive` Map 时内部 ref 被自动解包，导致所有页签文字与关闭按钮不渲染（本项目定位根因并反馈 UI 团队修复）；同时修复 AxTabPane 未设 `closable` 时无法继承 Tabs 级 `closable` 的问题。多页签工作区与作业详情页「任务编排/执行记录」页签恢复正常
+- **2026-07-14**
+  - axis-ui 升级至 0.4.6：内部修复，无新增/移除的组件导出与设计 Token，业务代码无需改动
+  - axis-ui 0.4.6 同步新增 AxTabs `type` prop（`line`/`card`）：多页签工作区改用 `type="card"`，页签变为独立卡片外观（选中态与内容区底色衔接），无需业务侧手写样式

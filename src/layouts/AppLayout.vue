@@ -56,7 +56,7 @@ function onLogout() {
 
       <!-- 页签栏：只渲染 AxTabs 的导航条作为页签，页面内容由下方 router-view 承载 -->
       <div class="app-layout__tabs">
-        <ax-tabs v-model="activeTab" @close="closeTab">
+        <ax-tabs v-model="activeTab" type="card" @close="closeTab">
           <ax-tab-pane
             v-for="tab in openTabs"
             :key="tab.key"
