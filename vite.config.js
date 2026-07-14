@@ -26,6 +26,10 @@ export default defineConfig({
         target: 'http://lead-mind-backend.dev.com',
         changeOrigin: true,
       },
+      '/admin-service': {
+        target: 'http://lead-mind-backend.dev.com',
+        changeOrigin: true,
+      },
     },
   },
 })

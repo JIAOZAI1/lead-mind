@@ -1,10 +1,13 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { authApi } from '../api/authApi'
 import { loadSession, saveSession, patchSession, clearSession } from '../utils/authSession'
 
 // 登录态来源于 sso-service 的 JWT 会话：
 // access token 15 分钟（过期由 http 层静默续期），refresh token 7 天（轮换机制）
 const currentUser = ref(loadSession()?.user ?? null)
+
+// 管理员角色由 sso-service /me 的 roles 字段返回，实时反映角色变更（撤销 admin 后下次登录/续期生效）
+const isAdmin = computed(() => currentUser.value?.roles?.includes('admin') ?? false)
 
 export function useAuth() {
   /**
@@ -34,5 +37,5 @@ export function useAuth() {
     currentUser.value = null
   }
 
-  return { currentUser, login, logout }
+  return { currentUser, isAdmin, login, logout }
 }

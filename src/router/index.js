@@ -8,6 +8,7 @@ const RegisterPage = () => import('../views/RegisterPage.vue')
 const DashboardPage = () => import('../views/DashboardPage.vue')
 const JobsPage = () => import('../views/JobsPage.vue')
 const JobDetailPage = () => import('../views/JobDetailPage.vue')
+const DatabaseInstancesPage = () => import('../views/DatabaseInstancesPage.vue')
 const UnderConstructionPage = () => import('../views/UnderConstructionPage.vue')
 
 const router = createRouter({
@@ -29,6 +30,8 @@ const router = createRouter({
         { path: 'jobs', name: 'jobs', component: JobsPage, meta: { title: '后台作业' } },
         // 详情页不在菜单里，menuKey 指回「后台作业」保持菜单高亮
         { path: 'jobs/:jobId(\\d+)', name: 'job-detail', component: JobDetailPage, meta: { title: '作业详情', menuKey: 'jobs' } },
+        // 仅 admin 角色可访问，对应后端 admin-service 全接口要求 admin 角色（见下方路由守卫）
+        { path: 'database-instances', name: 'database-instances', component: DatabaseInstancesPage, meta: { title: '数据库实例注册', adminOnly: true } },
         { path: 'settings', name: 'settings', component: UnderConstructionPage, meta: { title: '系统设置' } },
       ],
     },
@@ -39,12 +42,16 @@ const router = createRouter({
 
 // 全局前置守卫：未登录只能访问公开页，跳登录页时带上原目标，登录后原路返回
 router.beforeEach((to) => {
-  const { currentUser } = useAuth()
+  const { currentUser, isAdmin } = useAuth()
   if (!to.meta.public && !currentUser.value) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   // 已登录状态下访问登录/注册页没有意义，送回工作台
   if ((to.name === 'login' || to.name === 'register') && currentUser.value) {
+    return { name: 'dashboard' }
+  }
+  // 非 admin 用户直接改 URL 访问管理页：菜单已隐藏入口，这里兜底拦截（后端接口本身也会 403）
+  if (to.meta.adminOnly && !isAdmin.value) {
     return { name: 'dashboard' }
   }
 })

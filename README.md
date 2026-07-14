@@ -72,12 +72,13 @@ src/
 | 登录 | `src/views/LoginPage.vue` | 对接 sso-service 真实登录：账号/密码登录换取 JWT token 对，`/me` 拉取用户信息；AxForm 声明式校验，记住我（勾选存 localStorage，否则关标签页即失效）、注册入口，接口错误中文提示 |
 | 注册 | `src/views/RegisterPage.vue` | 对接 sso-service 注册：用户名/邮箱/密码/确认密码，校验规则与后端约束一致（用户名 3~64、密码 8~128、邮箱格式、两次密码一致），注册成功自动登录进工作台 |
 | 会话管理 | `src/api/http.js` | 请求默认携带 access token（后端网关对所有业务服务统一挂 ForwardAuth 登录校验，仅登录/注册/续期/注销匿名可达）；access token 15 分钟过期后由 refresh token 静默续期（单飞防并发、token 轮换）；refresh token 也失效时自动清会话回登录页；退出登录同步作废后端 refresh token |
-| 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
+| 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 数据库实例注册（仅 admin 角色可见）/ 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
 | 多页签工作区 | `src/composables/useWorkspaceTabs.js` | 点击菜单打开对应页签（AxTabs 导航条），切换页签经 keep-alive 保留页内状态（如列表分页/排序）；页签可关闭（工作台常驻不可关，关闭时释放页面缓存并跳相邻页签）；详情页归入所属菜单页签并记住最后访问位置；刷新后从 sessionStorage 恢复已打开页签，退出登录自动清空 |
 | 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
 | 后台作业 | `/jobs` → `JobsPage.vue` | 对接 backend-job-service：作业分页列表（支持点击表头按 ID / 名称 / 状态 / 下次执行 / 创建时间服务端排序）、新建作业（Cron 周期 / 一次性调度，前端校验与后端约束一致） |
 | 作业详情 | `/jobs/:jobId` → `JobDetailPage.vue` | 作业信息与最新执行状态（5 秒自动轮询）；任务编排（服务端分页 + 按顺序号 / 名称排序，按顺序绑定插件 Handler，配置参数 JSON / 超时 / 重试）；执行记录（服务端分页、按触发时间倒序，任务级明细弹窗展示输出与错误） |
-| 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/jobs`、`/jobs/:jobId`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回；页面标题跟随路由，详情页经 `meta.menuKey` 保持所属菜单高亮 |
+| 数据库实例注册 | `/database-instances` → `DatabaseInstancesPage.vue` | 对接 admin-service：数据库实例分页列表（支持点击表头按 ID / 名称 / 类型 / 创建时间服务端排序）、注册 / 编辑（密码留空则保留原密码）/ 删除（软删除），密码只加密落库不回显；仅 admin 角色可见该菜单项与访问该路由（`useNavigation.js` 菜单显隐 + 路由守卫双重拦截，对应后端接口的角色校验） |
+| 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/jobs`、`/jobs/:jobId`、`/database-instances`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回，另拦截非 admin 角色直接访问 `adminOnly` 路由；页面标题跟随路由，详情页经 `meta.menuKey` 保持所属菜单高亮 |
 
 ## 后端接口
 
@@ -88,8 +89,9 @@ src/
 
 已接入服务：
 
-- [sso-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/sso-service/README.md)：注册 / 登录 / 续期 / 注销 / 用户信息，JWT 双 token（access 15 分钟 + refresh 7 天轮换）
+- [sso-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/sso-service/README.md)：注册 / 登录 / 续期 / 注销 / 用户信息，JWT 双 token（access 15 分钟 + refresh 7 天轮换）；`/me` 额外返回 `roles` 角色列表，前端据此判断 admin 专属菜单/路由的可见性
 - [backend-job-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/backend-job-service/README.md)：作业调度（Cron / 一次性）、任务编排（插件 Handler）、执行记录与状态轮询；枚举字段用数字收发（后端未注册字符串枚举转换器），部分时间字段缺 UTC 时区后缀由前端统一补齐解析
+- [admin-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/admin-service/README.md)：数据库实例管理（本项目当前仅接入这部分，系统设置/用户审核开户/租户查询等接口后端已提供但前端暂未对接），全部接口要求 admin 角色，非 admin 调用返回 403
 
 ## Docker 部署
 
@@ -183,3 +185,8 @@ kubectl rollout restart deployment/lead-mind
 - **2026-07-14**
   - axis-ui 升级至 0.4.6：内部修复，无新增/移除的组件导出与设计 Token，业务代码无需改动
   - axis-ui 0.4.6 同步新增 AxTabs `type` prop（`line`/`card`）：多页签工作区改用 `type="card"`，页签变为独立卡片外观（选中态与内容区底色衔接），无需业务侧手写样式
+- **2026-07-15**
+  - 新增「数据库实例注册」一级菜单，对接 admin-service：数据库实例分页列表（ID/名称/类型/创建时间服务端排序）、注册/编辑（密码留空保留原密码）/删除；新增 `api/adminApi.js`
+  - 接入角色感知：`sso-service` `/me` 的 `roles` 字段透出到 `useAuth` 的 `isAdmin`，`useNavigation.js` 按角色过滤菜单项、路由 `meta.adminOnly` + 全局守卫双重拦截非 admin 用户访问管理页（后端 admin-service 全接口本身也做 admin 角色校验，前端属于体验层兜底）
+  - 补齐 `vite.config.js` 本地开发代理遗漏的 `/admin-service` 路径（此前只代理了 sso-service、backend-job-service）
+  - axis-ui 升级至 0.5.1：修复可排序列表头文字不跟随 `align` 居中/右对齐（列头是 flex 布局的排序按钮，`text-align` 传导不进去，此前恒靠左）——本项目定位根因、反馈并配合 UI 团队完成修复；`JobsPage`/`DatabaseInstancesPage` 的 `id`/`status`/`dbType` 等居中可排序列表头恢复居中，业务代码无需改动。同版本新增 `AxSteps`/`AxWizardModal`，暂无对应场景，未接入
