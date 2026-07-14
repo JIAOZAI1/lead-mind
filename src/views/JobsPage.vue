@@ -20,13 +20,14 @@ const pagination = reactive({
 // 服务端排序状态：sortable 列与后端可排序白名单一一对应（调度方式为组合列，后端无对应字段）
 const sort = reactive({ key: 'id', order: 'desc' })
 
+// 表头与内容统一居中，是本项目表格的默认对齐方案
 const columns = [
   { key: 'id', title: 'ID', align: 'center', sortable: true },
-  { key: 'name', title: '作业名称', sortable: true },
-  { key: 'schedule', title: '调度方式' },
+  { key: 'name', title: '作业名称', align: 'center', sortable: true },
+  { key: 'schedule', title: '调度方式', align: 'center' },
   { key: 'status', title: '状态', align: 'center', sortable: true },
-  { key: 'nextRunAt', title: '下次执行时间', sortable: true },
-  { key: 'createdAt', title: '创建时间', sortable: true },
+  { key: 'nextRunAt', title: '下次执行时间', align: 'center', sortable: true },
+  { key: 'createdAt', title: '创建时间', align: 'center', sortable: true },
   { key: 'actions', title: '操作', align: 'center' },
 ]
 

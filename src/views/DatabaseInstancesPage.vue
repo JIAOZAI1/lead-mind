@@ -18,13 +18,14 @@ const pagination = reactive({
 // 服务端排序状态，与后端白名单一一对应
 const sort = reactive({ key: 'id', order: 'desc' })
 
+// 表头与内容统一居中，是本项目表格的默认对齐方案
 const columns = [
   { key: 'id', title: 'ID', align: 'center', sortable: true },
-  { key: 'name', title: '实例名称', sortable: true },
+  { key: 'name', title: '实例名称', align: 'center', sortable: true },
   { key: 'dbType', title: '类型', align: 'center', sortable: true },
-  { key: 'address', title: '地址' },
-  { key: 'username', title: '用户名' },
-  { key: 'createdAt', title: '创建时间', sortable: true },
+  { key: 'address', title: '地址', align: 'center' },
+  { key: 'username', title: '用户名', align: 'center' },
+  { key: 'createdAt', title: '创建时间', align: 'center', sortable: true },
   { key: 'actions', title: '操作', align: 'center' },
 ]
 

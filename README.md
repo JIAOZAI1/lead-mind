@@ -190,3 +190,6 @@ kubectl rollout restart deployment/lead-mind
   - 接入角色感知：`sso-service` `/me` 的 `roles` 字段透出到 `useAuth` 的 `isAdmin`，`useNavigation.js` 按角色过滤菜单项、路由 `meta.adminOnly` + 全局守卫双重拦截非 admin 用户访问管理页（后端 admin-service 全接口本身也做 admin 角色校验，前端属于体验层兜底）
   - 补齐 `vite.config.js` 本地开发代理遗漏的 `/admin-service` 路径（此前只代理了 sso-service、backend-job-service）
   - axis-ui 升级至 0.5.1：修复可排序列表头文字不跟随 `align` 居中/右对齐（列头是 flex 布局的排序按钮，`text-align` 传导不进去，此前恒靠左）——本项目定位根因、反馈并配合 UI 团队完成修复；`JobsPage`/`DatabaseInstancesPage` 的 `id`/`status`/`dbType` 等居中可排序列表头恢复居中，业务代码无需改动。同版本新增 `AxSteps`/`AxWizardModal`，暂无对应场景，未接入
+  - axis-ui 升级至 0.5.2：修复可排序列居中时表头文字仍偏离列宽正中（排序图标占用 flex 布局空间，把"文字+图标"整体居中导致文字视觉左偏，窄列如 ID 尤为明显）——本项目定位根因并反馈，UI 团队采用图标 `position: absolute` 脱离文档流的方案修复，文字现在真正相对列宽居中
+  - axis-ui 升级至 0.5.3：新增 `TableColumn.headerAlign`，表头对齐可独立于内容对齐配置（不传回退到 `align`，向后兼容）——本项目反馈该需求后落地
+  - 表格对齐方案统一为项目默认：所有表格（`JobsPage`/`DatabaseInstancesPage`/`JobDetailPage` 的任务编排、执行记录、执行详情）全部列改为 `align: 'center'`，表头与内容均居中，不再区分短值/长文本的差异化对齐

@@ -53,11 +53,12 @@ const taskPagination = reactive({
 // 默认按顺序号升序，与任务实际执行顺序一致；sortable 列对应后端可排序白名单
 const taskSort = reactive({ key: 'order', order: 'asc' })
 
+// 表头与内容统一居中，是本项目表格的默认对齐方案
 const taskColumns = [
   { key: 'order', title: '顺序', align: 'center', sortable: true },
-  { key: 'name', title: '任务名称', sortable: true },
-  { key: 'handlerType', title: 'Handler 类型' },
-  { key: 'pluginAssembly', title: '插件程序集' },
+  { key: 'name', title: '任务名称', align: 'center', sortable: true },
+  { key: 'handlerType', title: 'Handler 类型', align: 'center' },
+  { key: 'pluginAssembly', title: '插件程序集', align: 'center' },
   { key: 'timeoutSeconds', title: '超时(秒)', align: 'center' },
   { key: 'maxRetryCount', title: '最大重试', align: 'center' },
   { key: 'actions', title: '操作', align: 'center' },
@@ -111,9 +112,9 @@ const executionPagination = reactive({
 const executionColumns = [
   { key: 'id', title: '执行 ID', align: 'center' },
   { key: 'status', title: '状态', align: 'center' },
-  { key: 'triggeredAt', title: '触发时间' },
-  { key: 'startedAt', title: '开始时间' },
-  { key: 'finishedAt', title: '结束时间' },
+  { key: 'triggeredAt', title: '触发时间', align: 'center' },
+  { key: 'startedAt', title: '开始时间', align: 'center' },
+  { key: 'finishedAt', title: '结束时间', align: 'center' },
   { key: 'actions', title: '操作', align: 'center' },
 ]
 
@@ -144,12 +145,12 @@ function onExecutionPageChange(page, pageSize) {
 const executionDetail = ref(null)
 const detailVisible = ref(false)
 const taskExecutionColumns = [
-  { key: 'task', title: '任务' },
+  { key: 'task', title: '任务', align: 'center' },
   { key: 'status', title: '状态', align: 'center' },
   { key: 'attemptCount', title: '尝试次数', align: 'center' },
-  { key: 'startedAt', title: '开始时间' },
-  { key: 'finishedAt', title: '结束时间' },
-  { key: 'result', title: '输出 / 错误' },
+  { key: 'startedAt', title: '开始时间', align: 'center' },
+  { key: 'finishedAt', title: '结束时间', align: 'center' },
+  { key: 'result', title: '输出 / 错误', align: 'center' },
 ]
 
 function openExecutionDetail(execution) {
