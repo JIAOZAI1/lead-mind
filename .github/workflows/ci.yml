@@ -29,6 +29,9 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: '@jiaozai1'
 
+      - name: 固定 npm 版本（与本机开发环境一致，避免 lockfile 因 npm 版本差异被判定不同步）
+        run: npm install -g npm@11
+
       - name: 安装依赖（按 lock 文件精确安装）
         run: npm ci
         env:

@@ -10,6 +10,7 @@ COPY package.json package-lock.json ./
 # .npmrc 写完即删，token 不会残留在任何镜像层
 RUN --mount=type=secret,id=npm_token \
     printf '@jiaozai1:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n' "$(cat /run/secrets/npm_token)" > /root/.npmrc \
+    && npm install -g npm@11 \
     && npm ci \
     && rm -f /root/.npmrc
 
