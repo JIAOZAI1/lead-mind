@@ -72,13 +72,14 @@ src/
 | 登录 | `src/views/LoginPage.vue` | 对接 sso-service 真实登录：账号/密码登录换取 JWT token 对，`/me` 拉取用户信息；AxForm 声明式校验，记住我（勾选存 localStorage，否则关标签页即失效）、注册入口，接口错误中文提示 |
 | 注册 | `src/views/RegisterPage.vue` | 对接 sso-service 注册：用户名/邮箱/密码/确认密码，校验规则与后端约束一致（用户名 3~64、密码 8~128、邮箱格式、两次密码一致），注册成功自动登录进工作台 |
 | 会话管理 | `src/api/http.js` | 请求默认携带 access token（后端网关对所有业务服务统一挂 ForwardAuth 登录校验，仅登录/注册/续期/注销匿名可达）；access token 15 分钟过期后由 refresh token 静默续期（单飞防并发、token 轮换）；refresh token 也失效时自动清会话回登录页；退出登录同步作废后端 refresh token |
-| 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 数据库实例注册（仅 admin 角色可见）/ 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
+| 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 注册审核与开户（仅 admin 角色可见）/ 数据库实例注册（仅 admin 角色可见）/ 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
 | 多页签工作区 | `src/composables/useWorkspaceTabs.js` | 点击菜单打开对应页签（AxTabs 导航条），切换页签经 keep-alive 保留页内状态（如列表分页/排序）；页签可关闭（工作台常驻不可关，关闭时释放页面缓存并跳相邻页签）；详情页归入所属菜单页签并记住最后访问位置；刷新后从 sessionStorage 恢复已打开页签，退出登录自动清空 |
 | 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
 | 后台作业 | `/jobs` → `JobsPage.vue` | 对接 backend-job-service：作业分页列表（支持点击表头按 ID / 名称 / 状态 / 下次执行 / 创建时间服务端排序）、新建作业（Cron 周期 / 一次性调度，前端校验与后端约束一致） |
 | 作业详情 | `/jobs/:jobId` → `JobDetailPage.vue` | 作业信息与最新执行状态（5 秒自动轮询）；任务编排（服务端分页 + 按顺序号 / 名称排序，按顺序绑定插件 Handler，配置参数 JSON / 超时 / 重试）；执行记录（服务端分页、按触发时间倒序，任务级明细弹窗展示输出与错误） |
 | 数据库实例注册 | `/database-instances` → `DatabaseInstancesPage.vue` | 对接 admin-service：数据库实例分页列表（支持点击表头按 ID / 名称 / 类型 / 创建时间服务端排序）、注册 / 编辑（密码留空则保留原密码）/ 删除（软删除），密码只加密落库不回显；仅 admin 角色可见该菜单项与访问该路由（`useNavigation.js` 菜单显隐 + 路由守卫双重拦截，对应后端接口的角色校验） |
-| 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/jobs`、`/jobs/:jobId`、`/database-instances`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回，另拦截非 admin 角色直接访问 `adminOnly` 路由；页面标题跟随路由，详情页经 `meta.menuKey` 保持所属菜单高亮 |
+| 注册审核与开户 | `/account-approval` → `AccountApprovalPage.vue` | 对接 admin-service：上方分页展示待审核用户列表，管理员可按行执行「通过开户」或「拒绝」；审核通过与开户为同一动作，同步创建租户记录并异步执行建库/建用户/标记审核/激活租户 4 步编排，弹窗内用 AxSteps 展示进度（3 秒轮询 backend-job-service 的作业状态接口），失败可直接重试（全链路幂等）；拒绝操作不可撤销，后端会软删除该用户且不开户；下方开户记录表格分页展示租户列表（ID/编码/状态/创建时间服务端排序）；仅 admin 角色可见该菜单项与访问该路由 |
+| 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/jobs`、`/jobs/:jobId`、`/database-instances`、`/account-approval`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回，另拦截非 admin 角色直接访问 `adminOnly` 路由；页面标题跟随路由，详情页经 `meta.menuKey` 保持所属菜单高亮 |
 
 ## 后端接口
 
@@ -91,7 +92,7 @@ src/
 
 - [sso-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/sso-service/README.md)：注册 / 登录 / 续期 / 注销 / 用户信息，JWT 双 token（access 15 分钟 + refresh 7 天轮换）；`/me` 额外返回 `roles` 角色列表，前端据此判断 admin 专属菜单/路由的可见性
 - [backend-job-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/backend-job-service/README.md)：作业调度（Cron / 一次性）、任务编排（插件 Handler）、执行记录与状态轮询；枚举字段用数字收发（后端未注册字符串枚举转换器），部分时间字段缺 UTC 时区后缀由前端统一补齐解析
-- [admin-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/admin-service/README.md)：数据库实例管理（本项目当前仅接入这部分，系统设置/用户审核开户/租户查询等接口后端已提供但前端暂未对接），全部接口要求 admin 角色，非 admin 调用返回 403
+- [admin-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/admin-service/README.md)：数据库实例管理、用户审核开户（待审核用户列表、审核通过并同步建租户记录 + 异步 4 步编排、拒绝审核软删除用户）、租户列表查询（系统设置等接口后端已提供但前端暂未对接），全部接口要求 admin 角色，非 admin 调用返回 403；开户异步编排的执行进度经 backend-job-service 的作业状态接口轮询
 
 ## Docker 部署
 
@@ -196,4 +197,7 @@ kubectl rollout restart deployment/lead-mind
   - axis-ui 升级至 0.7.0：新增 `AxIcon` 组件（`name`/`size`/`spin`/`label` props，内置 refresh/plus/edit/delete/eye 等图标集）；`JobsPage`/`DatabaseInstancesPage`/`JobDetailPage` 的"刷新/新建/注册/编辑/删除/详情/明细"等按钮与链接统一加上对应图标，间距由 `AxButton`/`AxLink` 自带的 flex `gap` Token 承载，无需额外样式；按钮内图标默认 20px 明显大于 14px 基础字号，统一改传 `size="sm"`（16px）与文字比例协调
   - 【待反馈 axis-ui】`refresh` 图标（环形箭头）相较 `plus`（对称十字）右侧/下方留白明显更多，与文字组合时即使 gap 值相同也显得间距偏大，属于图标集内部各图形留白不一致；本项目按钮内 gap 未做特殊处理，等待 axis-ui 侧统一做图标光学居中优化
   - axis-ui 升级至 0.7.1：修复暗色模式下 `--axis-color-text-inverse` 被错误重映射为近黑色（此前与 `--axis-color-text-primary` 暗色取值相同）导致的 bug——`ax-button` 的 primary/success/warning/danger 等实心背景变体在暗色模式下文字对比度骤降（如"新建作业"按钮暗色下文字发黑、糊在蓝色背景上）；本项目此前定位根因并反馈，现 `--axis-color-text-inverse` 已恒定为 `#ffffff`、不再随主题反转，业务代码无需改动
+  - 新增「注册审核与开户」一级菜单，对接 admin-service：管理员按用户 ID 提交审核（审核通过与开户为同一动作），弹窗用 0.5.1 引入但此前未接入场景的 `AxSteps` 展示建库/建用户/标记审核/激活租户 4 步异步编排进度（轮询 backend-job-service 作业状态接口），失败可直接重试（全链路幂等）；下方开户记录表格展示租户分页列表；`adminApi.js` 新增 `approveReview`/`listTenants`。**调研后端发现两处能力缺口**：sso-service 无"待审核用户列表"查询接口、审核状态无"拒绝"选项（仅 待审核/已通过），页面顶部加提示条告知管理员当前只能按已知 userId 审核，暂无拒绝操作，等待后端补齐后再完善
   - 顶栏与登录/注册页的亮暗主题切换由 `ax-switch` + 文字标签改为 `ax-link` 包 `AxIcon`（`sun`/`moon`，随当前主题切换图标）+ `ax-tooltip` 提示文案，交互更直观、不占用文字空间；`AppLayout.vue`/`AuthPageShell.vue` 移除相应的 `theme-label` 样式
+- **2026-07-16**
+  - 注册审核与开户页接入后端新增能力：`adminApi.js` 新增 `listReviewUsers`/`rejectReview` 以及审核状态、用户状态展示映射；页面上方改为待审核用户分页表格，管理员可按行「通过开户」或「拒绝」，拒绝前弹窗明确不可撤销语义，成功后刷新待审核列表；审核通过仍沿用开户 Job 轮询与 AxSteps 进度展示，开户完成后同步刷新待审核用户与开户记录

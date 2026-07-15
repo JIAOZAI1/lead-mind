@@ -1,4 +1,4 @@
-// admin-service 管理接口封装（数据库实例管理）
+// admin-service 管理接口封装（数据库实例管理 / 用户审核开户）
 // 接口契约见后端仓库 services/admin-service/README.md，全部接口要求当前用户拥有 admin 角色
 import { API_ORIGIN, request } from './http'
 
@@ -21,6 +21,32 @@ function buildPagedQuery({ page = 1, pageSize = 20, sortBy, sortOrder } = {}) {
     query.set('sortOrder', sortOrder === 'desc' ? 'desc' : 'asc')
   }
   return query
+}
+
+// 租户（开户结果）状态：TenantStatus 枚举，仅 Created/Active 有实际编排路径会触发，
+// Expired/Cancelled 是后端预留值，当前编排逻辑不会产出
+export const TENANT_STATUS_META = {
+  1: { label: '已创建（待激活）', tag: 'warning' },
+  2: { label: '已激活', tag: 'success' },
+  3: { label: '已过期', tag: 'default' },
+  4: { label: '已取消', tag: 'default' },
+}
+
+export const REVIEW_STATUS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+}
+
+export const REVIEW_STATUS_META = {
+  [REVIEW_STATUS.PENDING]: { label: '待审核', tag: 'warning' },
+  [REVIEW_STATUS.APPROVED]: { label: '已通过', tag: 'success' },
+  [REVIEW_STATUS.REJECTED]: { label: '已拒绝', tag: 'error' },
+}
+
+export const USER_STATUS_META = {
+  0: { label: '已禁用', tag: 'default' },
+  1: { label: '正常', tag: 'success' },
 }
 
 export const adminApi = {
@@ -48,5 +74,36 @@ export const adminApi = {
   /** 删除数据库实例（后端软删除） */
   deleteDatabaseInstance(id) {
     return request(`${ADMIN_BASE}/database-instances/${id}`, { method: 'DELETE' })
+  },
+
+  /** 分页查询审核用户列表；reviewStatus 默认 pending，可排序字段：id/createdAt */
+  listReviewUsers({ reviewStatus = REVIEW_STATUS.PENDING, page = 1, pageSize = 20, sortBy = 'createdAt', sortOrder = 'desc' } = {}) {
+    const query = buildPagedQuery({ page, pageSize, sortBy, sortOrder })
+    if (reviewStatus) query.set('reviewStatus', reviewStatus)
+    return request(`${ADMIN_BASE}/reviews/users?${query}`)
+  },
+
+  /**
+   * 审核通过并开户：审核与开户是同一动作，调用即触发。
+   * 同步部分只做校验 + 建租户记录，真正建库建用户是异步 Job（见返回的 jobId），
+   * 需要配合 jobApi.getJobStatus(jobId) 轮询开户进度。
+   * 失败后可用同一个 userId 重新调用本接口重试：全链路幂等设计。
+   */
+  approveReview(userId, { databaseInstanceId }) {
+    return request(`${ADMIN_BASE}/reviews/${userId}/approve`, {
+      method: 'POST',
+      body: { databaseInstanceId },
+    })
+  },
+
+  /** 拒绝审核：只标记并软删除用户，不创建租户；后端约定拒绝不可撤销 */
+  rejectReview(userId) {
+    return request(`${ADMIN_BASE}/reviews/${userId}/reject`, { method: 'POST' })
+  },
+
+  /** 分页查询开户结果（租户）列表；可排序字段：id/tenantCode/status/createdAt */
+  listTenants({ page = 1, pageSize = 20, sortBy = 'id', sortOrder = 'desc' } = {}) {
+    const query = buildPagedQuery({ page, pageSize, sortBy, sortOrder })
+    return request(`${ADMIN_BASE}/tenants?${query}`)
   },
 }

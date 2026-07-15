@@ -20,6 +20,7 @@ export const menuItems = [
   },
   { key: 'ai-assistant', label: 'AI 助手' },
   { key: 'jobs', label: '后台作业' },
+  { key: 'account-approval', label: '注册审核与开户', adminOnly: true },
   { key: 'database-instances', label: '数据库实例注册', adminOnly: true },
   { key: 'settings', label: '系统设置' },
 ]
