@@ -374,7 +374,7 @@ onUnmounted(() => {
         <ax-tab-pane name="tasks" label="任务编排">
           <ax-space class="job-detail__toolbar" block justify="space-between" wrap>
             <ax-text type="secondary" size="sm">任务按顺序号依次执行，前一步失败则中断后续任务。</ax-text>
-            <ax-button type="primary" @click="openCreateTask">新建任务</ax-button>
+            <ax-button type="primary" @click="openCreateTask"><ax-icon name="plus" size="sm" />新建任务</ax-button>
           </ax-space>
           <ax-table
             v-model:sort-key="taskSort.key"
@@ -393,8 +393,8 @@ onUnmounted(() => {
             <template #cell-pluginAssembly="{ value }"><ax-text code ellipsis :text="value" /></template>
             <template #cell-actions="{ row }">
               <ax-space size="sm">
-                <ax-link type="default" @click="openEditTask(row)">编辑</ax-link>
-                <ax-link type="danger" @click="openDeleteTask(row)">删除</ax-link>
+                <ax-link type="default" @click="openEditTask(row)"><ax-icon name="edit" size="sm" />编辑</ax-link>
+                <ax-link type="danger" @click="openDeleteTask(row)"><ax-icon name="delete" size="sm" />删除</ax-link>
               </ax-space>
             </template>
           </ax-table>
@@ -415,7 +415,7 @@ onUnmounted(() => {
         <ax-tab-pane name="executions" label="执行记录">
           <ax-space class="job-detail__toolbar" block justify="space-between" wrap>
             <ax-text type="secondary" size="sm">按触发时间倒序查看历史执行。</ax-text>
-            <ax-button :disabled="executionsLoading" @click="loadExecutions()">刷新</ax-button>
+            <ax-button :disabled="executionsLoading" @click="loadExecutions()"><ax-icon name="refresh" size="sm" />刷新</ax-button>
           </ax-space>
           <ax-table
             :columns="executionColumns"
@@ -433,7 +433,7 @@ onUnmounted(() => {
             <template #cell-startedAt="{ value }">{{ formatDateTime(value) }}</template>
             <template #cell-finishedAt="{ value }">{{ formatDateTime(value) }}</template>
             <template #cell-actions="{ row }">
-              <ax-link @click="openExecutionDetail(row)">明细</ax-link>
+              <ax-link @click="openExecutionDetail(row)"><ax-icon name="eye" size="sm" />明细</ax-link>
             </template>
           </ax-table>
 
@@ -517,7 +517,7 @@ onUnmounted(() => {
     <ax-text type="error" block>确认删除任务「{{ deletingTask?.name }}」？删除后新执行不会再运行该任务。</ax-text>
     <template #footer>
       <ax-button @click="deleteTaskVisible = false">取消</ax-button>
-      <ax-button type="danger" :loading="deletingTaskLoading" @click="onDeleteTask">删除</ax-button>
+      <ax-button type="danger" :loading="deletingTaskLoading" @click="onDeleteTask"><ax-icon name="delete" size="sm" />删除</ax-button>
     </template>
   </ax-modal>
 </template>

@@ -14,8 +14,11 @@ const { isDark, toggle: onToggleTheme } = useTheme()
 <template>
   <div class="auth-page">
     <div class="auth-page__theme">
-      <ax-switch :model-value="isDark" @change="onToggleTheme" />
-      <span class="auth-page__theme-label">{{ isDark ? '暗色' : '亮色' }}</span>
+      <ax-tooltip :content="isDark ? '切换到亮色主题' : '切换到暗色主题'" placement="bottom">
+        <ax-link type="default" @click="onToggleTheme">
+          <ax-icon :name="isDark ? 'moon' : 'sun'" />
+        </ax-link>
+      </ax-tooltip>
     </div>
 
     <ax-card class="auth-page__card" borderless>
@@ -47,14 +50,6 @@ const { isDark, toggle: onToggleTheme } = useTheme()
   position: fixed;
   top: var(--axis-space-6);
   right: var(--axis-space-6);
-  display: flex;
-  align-items: center;
-  gap: var(--axis-space-2);
-}
-
-.auth-page__theme-label {
-  font-size: var(--axis-font-size-sm);
-  color: var(--axis-color-text-secondary);
 }
 
 .auth-page__card {

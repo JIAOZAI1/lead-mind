@@ -187,8 +187,8 @@ function openDeleteModal(row) {
     <ax-card title="后台作业" borderless>
       <template #extra>
         <ax-space size="sm">
-          <ax-button :disabled="loading" @click="loadJobs()">刷新</ax-button>
-          <ax-button type="primary" @click="openCreateModal">新建作业</ax-button>
+          <ax-button :disabled="loading" @click="loadJobs()"><ax-icon name="refresh" size="sm" />刷新</ax-button>
+          <ax-button type="primary" @click="openCreateModal"><ax-icon name="plus" size="sm" />新建作业</ax-button>
         </ax-space>
       </template>
 
@@ -228,9 +228,9 @@ function openDeleteModal(row) {
         <template #cell-createdAt="{ value }">{{ formatDateTime(value) }}</template>
         <template #cell-actions="{ row }">
           <ax-space size="sm">
-            <ax-link @click="goDetail(row)">详情</ax-link>
-            <ax-link type="default" @click="openEditModal(row)">编辑</ax-link>
-            <ax-link type="danger" @click="openDeleteModal(row)">删除</ax-link>
+            <ax-link @click="goDetail(row)"><ax-icon name="eye" size="sm" />详情</ax-link>
+            <ax-link type="default" @click="openEditModal(row)"><ax-icon name="edit" size="sm" />编辑</ax-link>
+            <ax-link type="danger" @click="openDeleteModal(row)"><ax-icon name="delete" size="sm" />删除</ax-link>
           </ax-space>
         </template>
       </ax-table>
@@ -293,7 +293,7 @@ function openDeleteModal(row) {
     <ax-text type="error" block>确认删除作业「{{ deletingJob?.name }}」？删除后列表和调度将不再包含该作业。</ax-text>
     <template #footer>
       <ax-button @click="deleteVisible = false">取消</ax-button>
-      <ax-button type="danger" :loading="deleting" @click="onDeleteJob">删除</ax-button>
+      <ax-button type="danger" :loading="deleting" @click="onDeleteJob"><ax-icon name="delete" size="sm" />删除</ax-button>
     </template>
   </ax-modal>
 </template>

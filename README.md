@@ -193,3 +193,7 @@ kubectl rollout restart deployment/lead-mind
   - axis-ui 升级至 0.5.2：修复可排序列居中时表头文字仍偏离列宽正中（排序图标占用 flex 布局空间，把"文字+图标"整体居中导致文字视觉左偏，窄列如 ID 尤为明显）——本项目定位根因并反馈，UI 团队采用图标 `position: absolute` 脱离文档流的方案修复，文字现在真正相对列宽居中
   - axis-ui 升级至 0.5.3：新增 `TableColumn.headerAlign`，表头对齐可独立于内容对齐配置（不传回退到 `align`，向后兼容）——本项目反馈该需求后落地
   - 表格对齐方案统一为项目默认：所有表格（`JobsPage`/`DatabaseInstancesPage`/`JobDetailPage` 的任务编排、执行记录、执行详情）全部列改为 `align: 'center'`，表头与内容均居中，不再区分短值/长文本的差异化对齐
+  - axis-ui 升级至 0.7.0：新增 `AxIcon` 组件（`name`/`size`/`spin`/`label` props，内置 refresh/plus/edit/delete/eye 等图标集）；`JobsPage`/`DatabaseInstancesPage`/`JobDetailPage` 的"刷新/新建/注册/编辑/删除/详情/明细"等按钮与链接统一加上对应图标，间距由 `AxButton`/`AxLink` 自带的 flex `gap` Token 承载，无需额外样式；按钮内图标默认 20px 明显大于 14px 基础字号，统一改传 `size="sm"`（16px）与文字比例协调
+  - 【待反馈 axis-ui】`refresh` 图标（环形箭头）相较 `plus`（对称十字）右侧/下方留白明显更多，与文字组合时即使 gap 值相同也显得间距偏大，属于图标集内部各图形留白不一致；本项目按钮内 gap 未做特殊处理，等待 axis-ui 侧统一做图标光学居中优化
+  - axis-ui 升级至 0.7.1：修复暗色模式下 `--axis-color-text-inverse` 被错误重映射为近黑色（此前与 `--axis-color-text-primary` 暗色取值相同）导致的 bug——`ax-button` 的 primary/success/warning/danger 等实心背景变体在暗色模式下文字对比度骤降（如"新建作业"按钮暗色下文字发黑、糊在蓝色背景上）；本项目此前定位根因并反馈，现 `--axis-color-text-inverse` 已恒定为 `#ffffff`、不再随主题反转，业务代码无需改动
+  - 顶栏与登录/注册页的亮暗主题切换由 `ax-switch` + 文字标签改为 `ax-link` 包 `AxIcon`（`sun`/`moon`，随当前主题切换图标）+ `ax-tooltip` 提示文案，交互更直观、不占用文字空间；`AppLayout.vue`/`AuthPageShell.vue` 移除相应的 `theme-label` 样式

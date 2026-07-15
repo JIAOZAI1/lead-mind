@@ -44,8 +44,11 @@ function onLogout() {
       <header class="app-layout__header">
         <div class="app-layout__title">{{ activeMenuLabel }}</div>
         <div class="app-layout__user">
-          <ax-switch :model-value="isDark" size="sm" @change="onToggleTheme" />
-          <span class="app-layout__theme-label">{{ isDark ? '暗色' : '亮色' }}</span>
+          <ax-tooltip :content="isDark ? '切换到亮色主题' : '切换到暗色主题'" placement="bottom">
+            <ax-link type="default" @click="onToggleTheme">
+              <ax-icon :name="isDark ? 'moon' : 'sun'" />
+            </ax-link>
+          </ax-tooltip>
           <!-- 用户信息来自 sso-service /me（角色/租户后端暂未提供） -->
           <ax-tooltip :content="`邮箱：${currentUser.email}`" placement="bottom">
             <span class="app-layout__username">{{ currentUser.username }}</span>
@@ -136,11 +139,6 @@ function onLogout() {
   display: flex;
   align-items: center;
   gap: var(--axis-space-3);
-}
-
-.app-layout__theme-label {
-  font-size: var(--axis-font-size-sm);
-  color: var(--axis-color-text-secondary);
 }
 
 .app-layout__username {

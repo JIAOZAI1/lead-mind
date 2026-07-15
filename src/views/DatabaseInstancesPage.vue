@@ -177,8 +177,8 @@ async function onDeleteInstance() {
     <ax-card title="数据库实例注册" borderless>
       <template #extra>
         <ax-space size="sm">
-          <ax-button :disabled="loading" @click="loadInstances()">刷新</ax-button>
-          <ax-button type="primary" @click="openCreateModal">注册实例</ax-button>
+          <ax-button :disabled="loading" @click="loadInstances()"><ax-icon name="refresh" size="sm" />刷新</ax-button>
+          <ax-button type="primary" @click="openCreateModal"><ax-icon name="plus" size="sm" />注册实例</ax-button>
         </ax-space>
       </template>
 
@@ -207,8 +207,8 @@ async function onDeleteInstance() {
         <template #cell-createdAt="{ value }">{{ formatDateTime(value) }}</template>
         <template #cell-actions="{ row }">
           <ax-space size="sm">
-            <ax-link type="default" @click="openEditModal(row)">编辑</ax-link>
-            <ax-link type="danger" @click="openDeleteModal(row)">删除</ax-link>
+            <ax-link type="default" @click="openEditModal(row)"><ax-icon name="edit" size="sm" />编辑</ax-link>
+            <ax-link type="danger" @click="openDeleteModal(row)"><ax-icon name="delete" size="sm" />删除</ax-link>
           </ax-space>
         </template>
       </ax-table>
@@ -267,7 +267,7 @@ async function onDeleteInstance() {
     <ax-text type="error" block>确认删除数据库实例「{{ deletingInstance?.name }}」？删除后作业将无法选择该实例。</ax-text>
     <template #footer>
       <ax-button @click="deleteVisible = false">取消</ax-button>
-      <ax-button type="danger" :loading="deleting" @click="onDeleteInstance">删除</ax-button>
+      <ax-button type="danger" :loading="deleting" @click="onDeleteInstance"><ax-icon name="delete" size="sm" />删除</ax-button>
     </template>
   </ax-modal>
 </template>
