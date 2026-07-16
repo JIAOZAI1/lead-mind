@@ -23,8 +23,8 @@ function buildPagedQuery({ page = 1, pageSize = 20, sortBy, sortOrder } = {}) {
   return query
 }
 
-// 租户（开户结果）状态：TenantStatus 枚举，仅 Created/Active 有实际编排路径会触发，
-// Expired/Cancelled 是后端预留值，当前编排逻辑不会产出
+// 租户（开户结果）状态：Created/Active 来自开户编排，Expired 由 License 过期监控 Job 流转，
+// Cancelled 是后端预留值，当前编排逻辑不会产出
 export const TENANT_STATUS_META = {
   1: { label: '已创建（待激活）', tag: 'warning' },
   2: { label: '已激活', tag: 'success' },
@@ -89,10 +89,10 @@ export const adminApi = {
    * 需要配合 jobApi.getJobStatus(jobId) 轮询开户进度。
    * 失败后可用同一个 userId 重新调用本接口重试：全链路幂等设计。
    */
-  approveReview(userId, { databaseInstanceId }) {
+  approveReview(userId, { databaseInstanceId, licenseExpiresAt }) {
     return request(`${ADMIN_BASE}/reviews/${userId}/approve`, {
       method: 'POST',
-      body: { databaseInstanceId },
+      body: { databaseInstanceId, licenseExpiresAt },
     })
   },
 

@@ -76,6 +76,7 @@ const columns = [
   { key: 'id', title: 'ID', align: 'center', sortable: true },
   { key: 'tenantCode', title: '租户编码', align: 'center', sortable: true },
   { key: 'db', title: '数据库', align: 'center' },
+  { key: 'licenseExpiresAt', title: 'License 到期时间', align: 'center' },
   { key: 'reviewedBy', title: '审核人 ID', align: 'center' },
   { key: 'status', title: '状态', align: 'center', sortable: true },
   { key: 'createdAt', title: '创建时间', align: 'center', sortable: true },
@@ -132,9 +133,15 @@ const reviewVisible = ref(false)
 const reviewSubmitting = ref(false)
 const reviewFormRef = ref(null)
 const reviewingUser = ref(null)
-const reviewForm = reactive({ databaseInstanceId: '' })
+const reviewStep = ref(0)
+const reviewForm = reactive({ databaseInstanceId: '', licenseExpiresAt: '' })
+const REVIEW_WIZARD_STEPS = ['确认用户', '开户设置', '执行进度']
 const reviewRules = {
   databaseInstanceId: [{ required: true, message: '请选择目标数据库实例' }],
+  licenseExpiresAt: [
+    { required: true, message: '请选择 License 到期时间' },
+    { validator: (value) => new Date(value) > new Date() || 'License 到期时间必须晚于当前时间' },
+  ],
 }
 
 // 审核结果：同步部分返回后进入"开户进行中"轮询态，展示 4 步编排进度
@@ -159,6 +166,8 @@ const provisionSucceeded = computed(() => jobStatus.value?.latestExecution?.stat
 function openReviewModal(user) {
   reviewingUser.value = user
   reviewForm.databaseInstanceId = ''
+  reviewForm.licenseExpiresAt = ''
+  reviewStep.value = 0
   reviewResult.value = null
   jobStatus.value = null
   reviewVisible.value = true
@@ -193,6 +202,7 @@ async function onSubmitReview() {
   try {
     const result = await adminApi.approveReview(Number(reviewingUser.value.id), {
       databaseInstanceId: Number(reviewForm.databaseInstanceId),
+      licenseExpiresAt: new Date(reviewForm.licenseExpiresAt).toISOString(),
     })
     reviewResult.value = result
     AxMessage.success(`审核通过，开户任务已触发（Job #${result.jobId}）`)
@@ -214,6 +224,15 @@ async function onSubmitReview() {
   } finally {
     reviewSubmitting.value = false
   }
+}
+
+async function beforeReviewNext(step) {
+  if (step === 0) return true
+  if (step === 1) {
+    await onSubmitReview()
+    return !!reviewResult.value
+  }
+  return true
 }
 
 // 开户失败后可直接用原用户重试：全链路幂等，重新提交同一个 userId 即可
@@ -343,6 +362,7 @@ onUnmounted(stopPolling)
         <template #cell-db="{ row }">
           <ax-text code size="sm">{{ row.dbHost }}:{{ row.dbPort }} / {{ row.dbName }}</ax-text>
         </template>
+        <template #cell-licenseExpiresAt="{ value }">{{ formatDateTime(value) }}</template>
         <template #cell-status="{ value }">
           <ax-tag :type="TENANT_STATUS_META[value]?.tag">{{ TENANT_STATUS_META[value]?.label ?? value }}</ax-tag>
         </template>
@@ -363,29 +383,60 @@ onUnmounted(stopPolling)
     </ax-card>
   </section>
 
-  <ax-modal v-model="reviewVisible" title="审核通过并开户" width="var(--axis-container-sm)" :mask-closable="false">
-    <template v-if="!reviewResult">
+  <ax-wizard-modal
+    v-model="reviewVisible"
+    v-model:step="reviewStep"
+    title="审核通过并开户"
+    width="var(--axis-container-sm)"
+    :steps="REVIEW_WIZARD_STEPS"
+    :before-next="beforeReviewNext"
+    :next-text="reviewStep === 1 ? '提交开户' : '下一步'"
+    finish-text="完成"
+  >
+    <template #step-0>
       <ax-descriptions class="account-approval-page__target" :column="2" size="sm" layout="vertical">
         <ax-descriptions-item label="用户 ID"><ax-text code>{{ reviewingUser?.id }}</ax-text></ax-descriptions-item>
         <ax-descriptions-item label="用户名">{{ reviewingUser?.username }}</ax-descriptions-item>
         <ax-descriptions-item label="邮箱" :span="2">{{ reviewingUser?.email }}</ax-descriptions-item>
+        <ax-descriptions-item label="审核状态">
+          <ax-tag :type="REVIEW_STATUS_META[reviewingUser?.reviewStatus]?.tag">
+            {{ REVIEW_STATUS_META[reviewingUser?.reviewStatus]?.label ?? reviewingUser?.reviewStatus }}
+          </ax-tag>
+        </ax-descriptions-item>
+        <ax-descriptions-item label="账号状态">
+          <ax-tag :type="USER_STATUS_META[reviewingUser?.status]?.tag">
+            {{ USER_STATUS_META[reviewingUser?.status]?.label ?? reviewingUser?.status }}
+          </ax-tag>
+        </ax-descriptions-item>
       </ax-descriptions>
+      <ax-text type="secondary" size="sm" block>
+        确认用户信息后继续设置开户数据库实例与 License 到期时间。
+      </ax-text>
+    </template>
 
+    <template #step-1>
       <ax-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" @submit="onSubmitReview">
         <ax-form-item label="数据库实例" prop="databaseInstanceId">
           <ax-select v-model="reviewForm.databaseInstanceId" :options="databaseInstanceOptions" placeholder="选择开户目标实例" />
+        </ax-form-item>
+        <ax-form-item label="License 到期" prop="licenseExpiresAt">
+          <ax-input v-model="reviewForm.licenseExpiresAt" type="datetime-local" />
         </ax-form-item>
       </ax-form>
       <ax-text v-if="!databaseInstances.length" type="secondary" size="sm" block>
         暂无可用数据库实例，请先前往「数据库实例注册」添加。
       </ax-text>
+      <ax-text v-else type="secondary" size="sm" block>
+        到期时间会随开户请求写入租户记录，必须晚于当前时间；已有租户重试时后端不会覆盖原到期时间。
+      </ax-text>
     </template>
 
-    <template v-else>
+    <template #step-2>
       <ax-descriptions :column="2" size="sm" layout="vertical">
         <ax-descriptions-item label="用户 ID">{{ reviewResult.userId }}</ax-descriptions-item>
         <ax-descriptions-item label="租户编码"><ax-text code>{{ reviewResult.tenant.tenantCode }}</ax-text></ax-descriptions-item>
         <ax-descriptions-item label="开户 Job"><ax-text code>#{{ reviewResult.jobId }}</ax-text></ax-descriptions-item>
+        <ax-descriptions-item label="License 到期">{{ formatDateTime(reviewResult.tenant.licenseExpiresAt) }}</ax-descriptions-item>
         <ax-descriptions-item label="目标数据库">
           <ax-text code size="sm">{{ reviewResult.tenant.dbHost }}:{{ reviewResult.tenant.dbPort }} / {{ reviewResult.tenant.dbName }}</ax-text>
         </ax-descriptions-item>
@@ -402,22 +453,14 @@ onUnmounted(stopPolling)
       <ax-text v-if="provisionFailed && jobStatus.latestExecution.errorMessage" type="error" size="sm" block>
         {{ jobStatus.latestExecution.errorMessage }}
       </ax-text>
-    </template>
-
-    <template #footer>
-      <template v-if="!reviewResult">
-        <ax-button @click="reviewVisible = false">取消</ax-button>
-        <ax-button type="primary" :loading="reviewSubmitting" @click="onSubmitReview"><ax-icon name="check" size="sm" />通过并开户</ax-button>
-      </template>
-      <template v-else>
-        <ax-button @click="reviewVisible = false">关闭</ax-button>
-        <!-- 全链路幂等设计：开户失败后可用同一个 userId 直接重试 -->
-        <ax-button v-if="provisionFailed" type="primary" :loading="reviewSubmitting" @click="onRetryReview">
+      <!-- 全链路幂等设计：开户失败后可用同一个 userId 直接重试 -->
+      <ax-space v-if="provisionFailed" class="account-approval-page__retry" size="sm">
+        <ax-button type="primary" :loading="reviewSubmitting" @click="onRetryReview">
           <ax-icon name="refresh" size="sm" />重试开户
         </ax-button>
-      </template>
+      </ax-space>
     </template>
-  </ax-modal>
+  </ax-wizard-modal>
 
   <ax-modal v-model="rejectVisible" title="拒绝注册申请" width="var(--axis-container-sm)" :mask-closable="false">
     <ax-alert
@@ -456,5 +499,9 @@ onUnmounted(stopPolling)
 
 .account-approval-page__steps {
   margin: var(--axis-space-5) 0;
+}
+
+.account-approval-page__retry {
+  margin-top: var(--axis-space-4);
 }
 </style>
