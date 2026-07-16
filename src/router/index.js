@@ -10,6 +10,7 @@ const JobsPage = () => import('../views/JobsPage.vue')
 const JobDetailPage = () => import('../views/JobDetailPage.vue')
 const DatabaseInstancesPage = () => import('../views/DatabaseInstancesPage.vue')
 const AccountApprovalPage = () => import('../views/AccountApprovalPage.vue')
+const UserManagementPage = () => import('../views/UserManagementPage.vue')
 const UnderConstructionPage = () => import('../views/UnderConstructionPage.vue')
 
 const router = createRouter({
@@ -34,6 +35,7 @@ const router = createRouter({
         // 仅 admin 角色可访问，对应后端 admin-service 全接口要求 admin 角色（见下方路由守卫）
         { path: 'database-instances', name: 'database-instances', component: DatabaseInstancesPage, meta: { title: '数据库实例注册', adminOnly: true } },
         { path: 'account-approval', name: 'account-approval', component: AccountApprovalPage, meta: { title: '注册审核与开户', adminOnly: true } },
+        { path: 'user-management', name: 'user-management', component: UserManagementPage, meta: { title: '用户管理', adminOnly: true } },
         { path: 'settings', name: 'settings', component: UnderConstructionPage, meta: { title: '系统设置' } },
       ],
     },
