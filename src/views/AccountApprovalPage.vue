@@ -21,7 +21,7 @@ const usersSort = reactive({ key: '', order: '' })
 
 // 待审核接口支持 createdAt 排序，但当前响应体不返回 createdAt；默认用 createdAt 倒序拿最新注册用户。
 const userColumns = [
-  { key: 'id', title: '用户 ID', align: 'center', sortable: true },
+  { key: 'index', title: '序号', type: 'index', align: 'center' },
   { key: 'username', title: '用户名', align: 'center' },
   { key: 'email', title: '邮箱', align: 'center' },
   { key: 'status', title: '账号状态', align: 'center' },
@@ -73,7 +73,7 @@ const sort = reactive({ key: 'id', order: 'desc' })
 
 // 表头与内容统一居中，是本项目表格的默认对齐方案
 const columns = [
-  { key: 'id', title: 'ID', align: 'center', sortable: true },
+  { key: 'index', title: '序号', type: 'index', align: 'center' },
   { key: 'tenantCode', title: '租户编码', align: 'center', sortable: true },
   { key: 'db', title: '数据库', align: 'center' },
   { key: 'licenseExpiresAt', title: 'License 到期时间', align: 'center' },
@@ -187,7 +187,7 @@ async function pollJobStatus(jobId) {
     if (jobStatus.value.latestExecution?.status === 3 || jobStatus.value.latestExecution?.status === 4) {
       stopPolling()
       if (jobStatus.value.latestExecution.status === 3) {
-        AxMessage.success(`用户 ${reviewResult.value.userId} 开户完成`)
+        AxMessage.success(`用户「${reviewingUser.value?.username}」开户完成`)
         await Promise.all([loadPendingUsers(1), loadTenants(1)])
       }
     }
@@ -291,14 +291,12 @@ onUnmounted(stopPolling)
         v-model:sort-order="usersSort.order"
         :columns="userColumns"
         :data="pendingUsers"
+        :index-offset="(usersPagination.page - 1) * usersPagination.pageSize"
         :empty-text="usersLoading ? '加载中…' : '暂无待审核用户'"
         size="sm"
         striped
         @sort-change="onUsersSortChange"
       >
-        <template #cell-id="{ value }">
-          <ax-text code>{{ value }}</ax-text>
-        </template>
         <template #cell-username="{ value }">
           <ax-text weight="medium">{{ value }}</ax-text>
         </template>
@@ -348,14 +346,12 @@ onUnmounted(stopPolling)
         v-model:sort-order="sort.order"
         :columns="columns"
         :data="tenants"
+        :index-offset="(pagination.page - 1) * pagination.pageSize"
         :empty-text="loading ? '加载中…' : '暂无开户记录'"
         size="sm"
         striped
         @sort-change="onSortChange"
       >
-        <template #cell-id="{ value }">
-          <ax-text code>{{ value }}</ax-text>
-        </template>
         <template #cell-tenantCode="{ value }">
           <ax-text code weight="medium">{{ value }}</ax-text>
         </template>
@@ -395,7 +391,6 @@ onUnmounted(stopPolling)
   >
     <template #step-0>
       <ax-descriptions class="account-approval-page__target" :column="2" size="sm" layout="vertical">
-        <ax-descriptions-item label="用户 ID"><ax-text code>{{ reviewingUser?.id }}</ax-text></ax-descriptions-item>
         <ax-descriptions-item label="用户名">{{ reviewingUser?.username }}</ax-descriptions-item>
         <ax-descriptions-item label="邮箱" :span="2">{{ reviewingUser?.email }}</ax-descriptions-item>
         <ax-descriptions-item label="审核状态">
@@ -433,7 +428,7 @@ onUnmounted(stopPolling)
 
     <template #step-2>
       <ax-descriptions :column="2" size="sm" layout="vertical">
-        <ax-descriptions-item label="用户 ID">{{ reviewResult.userId }}</ax-descriptions-item>
+        <ax-descriptions-item label="用户名">{{ reviewingUser?.username }}</ax-descriptions-item>
         <ax-descriptions-item label="租户编码"><ax-text code>{{ reviewResult.tenant.tenantCode }}</ax-text></ax-descriptions-item>
         <ax-descriptions-item label="开户 Job"><ax-text code>#{{ reviewResult.jobId }}</ax-text></ax-descriptions-item>
         <ax-descriptions-item label="License 到期">{{ formatDateTime(reviewResult.tenant.licenseExpiresAt) }}</ax-descriptions-item>
@@ -469,7 +464,6 @@ onUnmounted(stopPolling)
       description="拒绝后该用户会被后端软删除，不能再对同一用户 ID 执行通过或拒绝；用户可用同一用户名或邮箱重新注册。"
     />
     <ax-descriptions class="account-approval-page__target" :column="2" size="sm" layout="vertical">
-      <ax-descriptions-item label="用户 ID"><ax-text code>{{ rejectingUser?.id }}</ax-text></ax-descriptions-item>
       <ax-descriptions-item label="用户名">{{ rejectingUser?.username }}</ax-descriptions-item>
       <ax-descriptions-item label="邮箱" :span="2">{{ rejectingUser?.email }}</ax-descriptions-item>
     </ax-descriptions>

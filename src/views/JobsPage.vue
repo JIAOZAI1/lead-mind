@@ -22,7 +22,7 @@ const sort = reactive({ key: 'id', order: 'desc' })
 
 // 表头与内容统一居中，是本项目表格的默认对齐方案
 const columns = [
-  { key: 'id', title: 'ID', align: 'center', sortable: true },
+  { key: 'index', title: '序号', type: 'index', align: 'center' },
   { key: 'name', title: '作业名称', align: 'center', sortable: true },
   { key: 'schedule', title: '调度方式', align: 'center' },
   { key: 'status', title: '状态', align: 'center', sortable: true },
@@ -197,14 +197,12 @@ function openDeleteModal(row) {
         v-model:sort-order="sort.order"
         :columns="columns"
         :data="jobs"
+        :index-offset="(pagination.page - 1) * pagination.pageSize"
         :empty-text="loading ? '加载中…' : '暂无作业，点击右上角新建'"
         size="sm"
         striped
         @sort-change="onSortChange"
       >
-        <template #cell-id="{ value }">
-          <ax-text code>{{ value }}</ax-text>
-        </template>
         <template #cell-name="{ row }">
           <ax-space direction="vertical" size="xs" align="start">
             <ax-text weight="medium">{{ row.name }}</ax-text>

@@ -20,7 +20,7 @@ const sort = reactive({ key: 'id', order: 'desc' })
 
 // 表头与内容统一居中，是本项目表格的默认对齐方案
 const columns = [
-  { key: 'id', title: 'ID', align: 'center', sortable: true },
+  { key: 'index', title: '序号', type: 'index', align: 'center' },
   { key: 'username', title: '用户名', align: 'center', sortable: true },
   { key: 'email', title: '邮箱', align: 'center' },
   { key: 'roles', title: '角色', align: 'center' },
@@ -179,6 +179,14 @@ async function loadRoles() {
   }
 }
 
+// AxSelect 多选需要 { value, label } 结构，角色描述拼进 label 供下拉时区分
+const roleSelectOptions = computed(() =>
+  roleOptions.value.map((role) => ({
+    value: role.name,
+    label: role.description ? `${role.name}（${role.description}）` : role.name,
+  })),
+)
+
 async function openAuthModal(row) {
   authTarget.value = row
   authVisible.value = true
@@ -250,14 +258,12 @@ const authRolesChanged = computed(() => {
         v-model:sort-order="sort.order"
         :columns="columns"
         :data="users"
+        :index-offset="(pagination.page - 1) * pagination.pageSize"
         :empty-text="loading ? '加载中…' : '暂无用户'"
         size="sm"
         striped
         @sort-change="onSortChange"
       >
-        <template #cell-id="{ value }">
-          <ax-text code>{{ value }}</ax-text>
-        </template>
         <template #cell-username="{ value, row }">
           <ax-link type="default" weight="medium" @click="openDetailModal(row)">{{ value }}</ax-link>
         </template>
@@ -336,7 +342,6 @@ const authRolesChanged = computed(() => {
   <ax-modal v-model="detailVisible" title="用户详情" width="var(--axis-container-sm)" :show-footer="false">
     <ax-text v-if="detailLoading" type="tertiary" size="sm">加载中…</ax-text>
     <ax-descriptions v-else-if="detailUser" :column="2" size="sm" layout="vertical">
-      <ax-descriptions-item label="用户 ID"><ax-text code>{{ detailUser.id }}</ax-text></ax-descriptions-item>
       <ax-descriptions-item label="用户名">{{ detailUser.username }}</ax-descriptions-item>
       <ax-descriptions-item label="邮箱" :span="2">{{ detailUser.email }}</ax-descriptions-item>
       <ax-descriptions-item label="账号状态">
@@ -365,18 +370,20 @@ const authRolesChanged = computed(() => {
     </template>
   </ax-modal>
 
-  <!-- 用户授权：勾选角色，提交时与打开弹窗时的原始角色集合做差异对比，只调用变化的部分 -->
+  <!-- 用户授权：下拉多选角色，提交时与打开弹窗时的原始角色集合做差异对比，只调用变化的部分 -->
   <ax-modal v-model="authVisible" title="用户授权" width="var(--axis-container-sm)">
     <ax-text type="secondary" size="sm" block class="user-management-page__auth-hint">
-      为用户「{{ authTarget?.username }}」勾选拥有的角色，保存后立即生效。
+      为用户「{{ authTarget?.username }}」选择拥有的角色，保存后立即生效。
     </ax-text>
     <ax-text v-if="authLoading" type="tertiary" size="sm">加载中…</ax-text>
-    <ax-checkbox-group v-else v-model="selectedRoles">
-      <ax-checkbox v-for="role in roleOptions" :key="role.id" :value="role.name">
-        {{ role.name }}
-        <ax-text v-if="role.description" type="tertiary" size="sm">（{{ role.description }}）</ax-text>
-      </ax-checkbox>
-    </ax-checkbox-group>
+    <ax-select
+      v-else
+      v-model="selectedRoles"
+      multiple
+      :options="roleSelectOptions"
+      placeholder="选择角色"
+      :max-tag-count="4"
+    />
     <template #footer>
       <ax-button @click="closeAuthModal">取消</ax-button>
       <ax-button type="primary" :loading="authSaving" :disabled="!authRolesChanged" @click="onSaveAuth">保存</ax-button>

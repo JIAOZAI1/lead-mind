@@ -212,4 +212,9 @@ kubectl rollout restart deployment/lead-mind
 - **2026-07-17**
   - 新增「用户管理」一级菜单，对接 admin-service（全量用户列表、重置密码）+ sso-service（角色查询/分配/移除）：新增 `api/userApi.js`；列表支持按 ID / 用户名 / 创建时间服务端排序，展示角色 / 租户编码 / License 到期时间；重置密码走独立确认弹窗（`AxAlert` 警示 + 危险色按钮），成功后一次性展示随机临时密码（可复制）；用户授权弹窗用 `AxCheckboxGroup` 勾选角色，保存时只对增删的角色分别调用分配/移除接口，未变化则直接跳过请求
   - 调研确认后端暂无「启用/禁用用户」与「按 ID 查询任意用户详情」的对外接口，本期未接入
-  - 后端补齐「启用/禁用用户」（`POST /admin-service/api/v1/users/{userId}/enable|disable`，幂等）与「按 ID 查询用户详情」（`GET /admin-service/api/v1/users/{userId}`）接口后随即接入：`userApi.js` 新增 `getUser`/`enableUser`/`disableUser`；列表新增账号状态列（正常/已禁用 Tag），行内新增启用/禁用操作（二次确认弹窗，禁用态用 `AxAlert` 提示"下次登录会被拒绝"）；用户名改为可点击链接，弹出详情弹窗展示 ID / 用户名 / 邮箱 / 账号状态 / 创建时间
+  - 后端补齐「启用/禁用用户」（`POST /admin-service/api/v1/users/{userId}/enable|disable`，幂等）与「按 ID 查询用户详情」（`GET /admin-service/api/v1/users/{userId}`）接口后随即接入：`userApi.js` 新增 `getUser`/`enableUser`/`disableUser`；列表新增账号状态列（正常/已禁用 Tag），行内新增启用/禁用操作（二次确认弹窗，禁用态用 `AxAlert` 提示"下次登录会被拒绝"）；用户名改为可点击链接，弹出详情弹窗展示用户名 / 邮箱 / 账号状态 / 创建时间
+- **2026-07-18**
+  - axis-ui 升级至 0.7.2（内部修复，无新增/移除的组件导出与设计 Token）；确认 `AxSelect` 已支持 `multiple`/`maxTagCount`（多选 + 超出个数折叠），`AxTable` 的 `TableColumn` 支持 `type: 'index'`（配合 `indexOffset` 输出跨页连续的自增序号）
+  - 用户授权弹窗改用 `AxSelect multiple` 替换原来的 `AxCheckboxGroup`：角色多选收进下拉，超过 4 个自动折叠为「+N」，弹窗更紧凑；`userApi.js` 角色列表转换为 `{ value, label }` 供下拉消费，角色描述拼进 label
+  - 表格 ID 主键列统一改为自增序号列（`type: 'index'` + `indexOffset` 跟随分页页码，序号不可点击排序，表格默认排序仍按 `id` 请求数据不变）：`UserManagementPage`/`DatabaseInstancesPage`/`JobsPage`/`AccountApprovalPage`（待审核用户表 + 开户记录表）/`JobDetailPage`（执行记录表）
+  - 一并清理页面弹窗内展示的真实数据库 ID（用户详情、审核开户向导、拒绝审核确认、作业详情头部、最新执行状态、执行明细弹窗标题），前端不再向管理员暴露任何主键值；审核开户向导第三步、开户完成提示改用用户名替代原来的用户 ID 展示

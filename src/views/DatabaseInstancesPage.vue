@@ -20,7 +20,7 @@ const sort = reactive({ key: 'id', order: 'desc' })
 
 // 表头与内容统一居中，是本项目表格的默认对齐方案
 const columns = [
-  { key: 'id', title: 'ID', align: 'center', sortable: true },
+  { key: 'index', title: '序号', type: 'index', align: 'center' },
   { key: 'name', title: '实例名称', align: 'center', sortable: true },
   { key: 'dbType', title: '类型', align: 'center', sortable: true },
   { key: 'address', title: '地址', align: 'center' },
@@ -187,14 +187,12 @@ async function onDeleteInstance() {
         v-model:sort-order="sort.order"
         :columns="columns"
         :data="instances"
+        :index-offset="(pagination.page - 1) * pagination.pageSize"
         :empty-text="loading ? '加载中…' : '暂无数据库实例，点击右上角注册'"
         size="sm"
         striped
         @sort-change="onSortChange"
       >
-        <template #cell-id="{ value }">
-          <ax-text code>{{ value }}</ax-text>
-        </template>
         <template #cell-name="{ value }">
           <ax-text weight="medium">{{ value }}</ax-text>
         </template>

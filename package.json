@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@jiaozai1/axis-ui": "^0.7.1",
+    "@jiaozai1/axis-ui": "^0.7.2",
     "vue": "^3.5.38",
     "vue-router": "^4.6.4"
   },

@@ -110,7 +110,7 @@ const executionPagination = reactive({
   total: 0,
 })
 const executionColumns = [
-  { key: 'id', title: '执行 ID', align: 'center' },
+  { key: 'index', title: '序号', type: 'index', align: 'center' },
   { key: 'status', title: '状态', align: 'center' },
   { key: 'triggeredAt', title: '触发时间', align: 'center' },
   { key: 'startedAt', title: '开始时间', align: 'center' },
@@ -338,8 +338,7 @@ onUnmounted(() => {
       <template #extra>
         <ax-link @click="router.push({ name: 'jobs' })">返回列表</ax-link>
       </template>
-      <ax-descriptions :column="4" size="sm" layout="vertical">
-        <ax-descriptions-item label="作业 ID">{{ job.id }}</ax-descriptions-item>
+      <ax-descriptions :column="3" size="sm" layout="vertical">
         <ax-descriptions-item :label="job.scheduleType === SCHEDULE_TYPE.CRON ? 'Cron 表达式' : '执行时间'">
           <ax-text code ellipsis :text="job.scheduleType === SCHEDULE_TYPE.CRON ? job.cronExpression : formatDateTime(job.runAt)" />
         </ax-descriptions-item>
@@ -358,7 +357,6 @@ onUnmounted(() => {
           <ax-tag :type="EXECUTION_STATUS_META[latestExecution.status]?.tag">
             {{ EXECUTION_STATUS_META[latestExecution.status]?.label }}
           </ax-tag>
-          <ax-text code>#{{ latestExecution.id }}</ax-text>
           <ax-text>触发于 {{ formatDateTime(latestExecution.triggeredAt) }}</ax-text>
           <ax-link size="sm" @click="openExecutionDetail(latestExecution)">查看明细</ax-link>
         </ax-space>
@@ -420,6 +418,7 @@ onUnmounted(() => {
           <ax-table
             :columns="executionColumns"
             :data="executions"
+            :index-offset="(executionPagination.page - 1) * executionPagination.pageSize"
             :empty-text="executionsLoading ? '加载中…' : '暂无执行记录'"
             size="sm"
             striped
@@ -454,7 +453,7 @@ onUnmounted(() => {
   </section>
 
   <!-- 执行明细弹窗：每个任务的执行状态、重试次数与输出/错误 -->
-  <ax-modal v-model="detailVisible" :title="`执行 #${executionDetail?.id} 明细`" width="var(--axis-container-md)" :show-footer="false">
+  <ax-modal v-model="detailVisible" :title="`执行明细（${formatDateTime(executionDetail?.triggeredAt)} 触发）`" width="var(--axis-container-md)" :show-footer="false">
     <template v-if="executionDetail">
       <ax-text v-if="executionDetail.errorMessage" type="error" size="sm" block>{{ executionDetail.errorMessage }}</ax-text>
       <ax-table :columns="taskExecutionColumns" :data="executionDetail.taskExecutions" empty-text="本次执行没有任务记录" size="sm">
