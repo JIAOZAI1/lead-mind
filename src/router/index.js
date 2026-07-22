@@ -11,6 +11,7 @@ const JobDetailPage = () => import('../views/JobDetailPage.vue')
 const DatabaseInstancesPage = () => import('../views/DatabaseInstancesPage.vue')
 const AccountApprovalPage = () => import('../views/AccountApprovalPage.vue')
 const UserManagementPage = () => import('../views/UserManagementPage.vue')
+const AiAssistantPage = () => import('../views/AiAssistantPage.vue')
 const UnderConstructionPage = () => import('../views/UnderConstructionPage.vue')
 
 const router = createRouter({
@@ -28,7 +29,7 @@ const router = createRouter({
         // 以下模块尚未开发，统一渲染"建设中"占位页；落地时替换 component 即可
         { path: 'leads/search', name: 'lead-search', component: UnderConstructionPage, meta: { title: '线索搜索' } },
         { path: 'leads/mine', name: 'my-leads', component: UnderConstructionPage, meta: { title: '我的线索' } },
-        { path: 'ai-assistant', name: 'ai-assistant', component: UnderConstructionPage, meta: { title: 'AI 助手' } },
+        { path: 'ai-assistant', name: 'ai-assistant', component: AiAssistantPage, meta: { title: 'AI 助手' } },
         { path: 'jobs', name: 'jobs', component: JobsPage, meta: { title: '后台作业' } },
         // 详情页不在菜单里，menuKey 指回「后台作业」保持菜单高亮
         { path: 'jobs/:jobId(\\d+)', name: 'job-detail', component: JobDetailPage, meta: { title: '作业详情', menuKey: 'jobs' } },

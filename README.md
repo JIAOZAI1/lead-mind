@@ -38,7 +38,8 @@ src/
 │   ├── authApi.js        # sso-service 认证接口（注册/登录/注销/用户信息）+ 错误文案中文化
 │   ├── jobApi.js         # backend-job-service 作业调度接口（作业/任务/执行记录/状态轮询）+ 枚举展示元数据
 │   ├── adminApi.js       # admin-service 管理接口（数据库实例管理 / 用户审核开户）
-│   └── userApi.js        # 用户管理接口（全量用户列表 / 重置密码 / 角色分配与移除，跨 admin-service + sso-service）
+│   ├── userApi.js        # 用户管理接口（全量用户列表 / 重置密码 / 角色分配与移除，跨 admin-service + sso-service）
+│   └── aiAgentApi.js     # ai-agent 服务接口（单轮对话 + SSE 流式对话）
 ├── assets/       # 全局样式（main.css：全局基础样式，消费 axis-ui Token）
 ├── components/   # 业务公共组件
 │   └── AuthPageShell.vue # 认证页共享外壳：居中卡片 + Logo + 主题切换
@@ -63,6 +64,7 @@ src/
 │   ├── DatabaseInstancesPage.vue # /database-instances 数据库实例注册（仅 admin）
 │   ├── AccountApprovalPage.vue   # /account-approval 注册审核与开户（仅 admin）
 │   ├── UserManagementPage.vue    # /user-management 用户管理：全量用户列表 / 重置密码 / 角色授权（仅 admin）
+│   ├── AiAssistantPage.vue       # /ai-assistant AI 助手：对接 ai-agent 服务，SSE 流式对话
 │   └── UnderConstructionPage.vue # 未开发模块共用占位页
 ├── App.vue       # 根组件：仅渲染路由出口
 └── main.js       # 入口：注册 axis-ui + router 并引入样式
@@ -85,6 +87,7 @@ src/
 | 数据库实例注册 | `/database-instances` → `DatabaseInstancesPage.vue` | 对接 admin-service：数据库实例分页列表（支持点击表头按 ID / 名称 / 类型 / 创建时间服务端排序）、注册 / 编辑（密码留空则保留原密码）/ 删除（软删除），密码只加密落库不回显；仅 admin 角色可见该菜单项与访问该路由（`useNavigation.js` 菜单显隐 + 路由守卫双重拦截，对应后端接口的角色校验） |
 | 注册审核与开户 | `/account-approval` → `AccountApprovalPage.vue` | 对接 admin-service：上方分页展示待审核用户列表，管理员可按行执行「通过开户」或「拒绝」；审核通过与开户使用 AxWizardModal 向导完成，依次确认用户、选择数据库实例并设置 License 到期时间、查看建库/建用户/标记审核/激活租户 4 步编排进度（3 秒轮询 backend-job-service 的作业状态接口），失败可直接重试（全链路幂等）；拒绝操作不可撤销，后端会软删除该用户且不开户；下方开户记录表格分页展示租户列表（ID/编码/数据库/License 到期时间/状态/创建时间服务端排序）；仅 admin 角色可见该菜单项与访问该路由 |
 | 用户管理 | `/user-management` → `UserManagementPage.vue` | 对接 admin-service + sso-service：全量用户分页列表（不限审核状态，支持点击表头按 ID / 用户名 / 创建时间服务端排序），展示用户名 / 邮箱 / 角色 / 账号状态 / 租户编码 / License 到期时间 / 创建时间；点击用户名弹出详情（按 ID 查询，展示 ID / 用户名 / 邮箱 / 账号状态 / 创建时间）；「重置密码」弹窗二次确认后调用后端生成随机临时密码，明文只在弹窗内展示一次（可一键复制），关闭后无法再次查看；「启用/禁用」二次确认后调用对应接口（幂等，禁用后该用户下次登录会被 sso-service 拒绝），成功后刷新列表；「授权」弹窗按 AxCheckboxGroup 勾选角色，保存时与打开弹窗时的原始角色集合做差异对比，只调用变化的分配/移除接口；仅 admin 角色可见该菜单项与访问该路由 |
+| AI 助手 | `/ai-assistant` → `AiAssistantPage.vue` | 对接 ai-agent 服务：单轮对话框 + SSE 流式渲染回答（`fetch` + `ReadableStream` 手动解析 `event:`/`data:` 帧，因为响应用了具名 event 且需要携带 Authorization 头，浏览器原生 EventSource 均不满足）；用户消息与助手消息气泡区分展示，生成中显示打字光标动效，支持「停止生成」（仅中止前端接收，已生成内容保留）与「清空对话」；租户身份（`X-Tenant-Code`）由后端网关 ForwardAuth 按登录用户自动注入，前端调用无需关心，未开户/无租户账号会收到 400 提示 |
 | 路由体系 | `src/router/index.js` | 页面与 URL 一一对应（`/login`、`/register`、`/dashboard`、`/leads/search`、`/leads/mine`、`/ai-assistant`、`/jobs`、`/jobs/:jobId`、`/database-instances`、`/account-approval`、`/user-management`、`/settings`），懒加载分包；登录守卫拦截未登录访问并支持登录后原路返回，另拦截非 admin 角色直接访问 `adminOnly` 路由；页面标题跟随路由，详情页经 `meta.menuKey` 保持所属菜单高亮 |
 
 ## 后端接口
@@ -92,7 +95,7 @@ src/
 后端为微服务架构，网关按 host + 路由前缀转发（dev 网关：`http://lead-mind-backend.dev.com`），网关的 Traefik CORS 中间件按来源白名单放行跨域：
 
 - **部署环境**：浏览器直连后端网关域名（`.env.production` 注入 `VITE_API_ORIGIN`），`lead-mind.dev.com` 在 CORS 白名单内
-- **本地开发**：走 vite dev server 代理到后端网关（见 `vite.config.js` 的 `server.proxy`，服务端转发不受 CORS 限制）——vite 默认端口 `localhost:5173` 不在网关白名单内，故不直连
+- **本地开发**：走 vite dev server 代理到后端网关（见 `vite.config.js` 的 `server.proxy`，服务端转发不受 CORS 限制）——vite 默认端口 `localhost:5173` 不在网关白名单内，故不直连；`/ai-agent` 代理额外关闭了 `buffer`，否则 SSE 增量内容会被代理攒批一次性下发，失去流式效果
 
 已接入服务：
 
@@ -100,6 +103,7 @@ src/
 - [backend-job-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/backend-job-service/README.md)：作业调度（Cron / 一次性）、任务编排（插件 Handler）、执行记录与状态轮询；枚举字段用数字收发（后端未注册字符串枚举转换器），部分时间字段缺 UTC 时区后缀由前端统一补齐解析
 - [admin-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/admin-service/README.md)：数据库实例管理、用户审核开户（待审核用户列表、审核通过并同步建租户记录 + License 到期时间 + 异步 4 步编排、拒绝审核软删除用户）、全量用户列表查询、按 ID 查询用户详情、管理员重置用户密码、启用 / 禁用用户（幂等）、租户列表查询（系统设置等接口后端已提供但前端暂未对接），全部接口要求 admin 角色，非 admin 调用返回 403；开户异步编排的执行进度经 backend-job-service 的作业状态接口轮询
 - sso-service 角色接口：用户角色查询 / 分配 / 移除（`/api/v1/users/:userID/roles`）与角色列表查询（`/api/v1/roles`），均要求 admin 角色；当前是用户-角色多对多的简单 RBAC，无细粒度权限（Permission）模型
+- [ai-agent](https://github.com/JIAOZAI1/lead-mind-ai-agent)：`POST /ai-agent/v1/chat` 单轮对话（非流式）；`GET /ai-agent/v1/chat/stream?message=` SSE 流式对话，响应用具名 event（`message`/`done`/`error`），`data` 里的 `delta` 为增量文本，`done` 事件即结束标志（无累计全文字段，前端自行拼接）；服务端按 `X-Tenant-Code` 请求头路由到租户，该头由网关 ForwardAuth 校验登录态时按用户的 active 租户自动注入（管理员等无租户账号会收到 `400 missing X-Tenant-Code header`）；当前无多轮会话历史（`session_id` 字段存在但后端未使用），无工具调用中间步骤展示（后端尚未区分 tool-call 与最终回答 chunk）
 
 ## Docker 部署
 
@@ -218,3 +222,8 @@ kubectl rollout restart deployment/lead-mind
   - 用户授权弹窗改用 `AxSelect multiple` 替换原来的 `AxCheckboxGroup`：角色多选收进下拉，超过 4 个自动折叠为「+N」，弹窗更紧凑；`userApi.js` 角色列表转换为 `{ value, label }` 供下拉消费，角色描述拼进 label
   - 表格 ID 主键列统一改为自增序号列（`type: 'index'` + `indexOffset` 跟随分页页码，序号不可点击排序，表格默认排序仍按 `id` 请求数据不变）：`UserManagementPage`/`DatabaseInstancesPage`/`JobsPage`/`AccountApprovalPage`（待审核用户表 + 开户记录表）/`JobDetailPage`（执行记录表）
   - 一并清理页面弹窗内展示的真实数据库 ID（用户详情、审核开户向导、拒绝审核确认、作业详情头部、最新执行状态、执行明细弹窗标题），前端不再向管理员暴露任何主键值；审核开户向导第三步、开户完成提示改用用户名替代原来的用户 ID 展示
+- **2026-07-21**
+  - 新增「AI 助手」一级菜单，对接新后端服务 ai-agent：新增 `api/aiAgentApi.js`，`chat()` 单轮非流式对话 + `chatStream()` SSE 流式对话；流式解析用 `fetch` + `ReadableStream` 手写 `event:`/`data:` 帧解析（后端用具名 event 区分 message/done/error，且需要携带 Authorization 头，浏览器原生 `EventSource` 两点都不满足）
+  - `AiAssistantPage.vue`：消息气泡区分用户/助手（对齐方向 + 底色），流式增量内容实时追加渲染、生成中显示打字光标动效；支持「停止生成」（`AbortController` 中止 fetch，仅停止前端接收，已生成内容保留）与「清空对话」；纯前端会话状态，刷新即清空（后端 `session_id` 字段存在但尚未接入多轮历史）
+  - `vite.config.js` 新增 `/ai-agent` 本地开发代理，并关闭 `buffer` 选项——默认开启会导致 SSE 响应被代理攒批而失去流式效果，经 curl 实测验证增量确实逐块到达（非攒批一次性下发）
+  - 调研确认 ai-agent 当前无鉴权，靠请求头 `X-Tenant-Code` 路由到租户；该头由网关 `gateway-auth` ForwardAuth 中间件在校验 sso-service 登录态时按用户的 active 租户自动注入（`sso-service` 内部接口 `/internal/auth/verify` 逻辑），前端调用无需显式传递；无租户的账号（多为纯管理员账号）调用会收到 `400 missing X-Tenant-Code header`，属于后端既有的预期行为

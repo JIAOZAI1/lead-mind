@@ -30,6 +30,12 @@ export default defineConfig({
         target: 'http://lead-mind-backend.dev.com',
         changeOrigin: true,
       },
+      // SSE 流式接口需要关闭代理缓冲，否则增量内容会被攒批一次性下发
+      '/ai-agent': {
+        target: 'http://lead-mind-backend.dev.com',
+        changeOrigin: true,
+        buffer: false,
+      },
     },
   },
 })
