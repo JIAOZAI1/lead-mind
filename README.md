@@ -103,7 +103,7 @@ src/
 - [backend-job-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/backend-job-service/README.md)：作业调度（Cron / 一次性）、任务编排（插件 Handler）、执行记录与状态轮询；枚举字段用数字收发（后端未注册字符串枚举转换器），部分时间字段缺 UTC 时区后缀由前端统一补齐解析
 - [admin-service](https://github.com/JIAOZAI1/backend-service/blob/main/services/admin-service/README.md)：数据库实例管理、用户审核开户（待审核用户列表、审核通过并同步建租户记录 + License 到期时间 + 异步 4 步编排、拒绝审核软删除用户）、全量用户列表查询、按 ID 查询用户详情、管理员重置用户密码、启用 / 禁用用户（幂等）、租户列表查询（系统设置等接口后端已提供但前端暂未对接），全部接口要求 admin 角色，非 admin 调用返回 403；开户异步编排的执行进度经 backend-job-service 的作业状态接口轮询
 - sso-service 角色接口：用户角色查询 / 分配 / 移除（`/api/v1/users/:userID/roles`）与角色列表查询（`/api/v1/roles`），均要求 admin 角色；当前是用户-角色多对多的简单 RBAC，无细粒度权限（Permission）模型
-- [ai-agent](https://github.com/JIAOZAI1/lead-mind-ai-agent)：`POST /ai-agent/v1/chat` 单轮对话（非流式）；`GET /ai-agent/v1/chat/stream?message=` SSE 流式对话，响应用具名 event（`message`/`done`/`error`），`data` 里的 `delta` 为增量文本，`done` 事件即结束标志（无累计全文字段，前端自行拼接）；服务端按 `X-Tenant-Code` 请求头路由到租户，该头由网关 ForwardAuth 校验登录态时按用户的 active 租户自动注入（管理员等无租户账号会收到 `400 missing X-Tenant-Code header`）；当前无多轮会话历史（`session_id` 字段存在但后端未使用），无工具调用中间步骤展示（后端尚未区分 tool-call 与最终回答 chunk）
+- [ai-agent](https://github.com/JIAOZAI1/lead-mind-ai-agent)：`POST /ai-agent/v1/chat` 单轮对话（非流式，请求体带 `session_id` 续接多轮历史，首轮传空）；`GET /ai-agent/v1/chat/stream?message=&session_id=` SSE 流式对话，响应用具名 event（`session`/`message`/`done`/`error`），首帧 `event: session` 回显本轮生效的 `session_id`，`message` 帧 `data` 里的 `delta` 为增量文本，`done` 事件即结束标志（无累计全文字段，前端自行拼接）；`session_id` 为空或首次出现时后端新建会话并在 Redis 落地短期历史，非空时按该 ID 续接上下文，服务端按 `X-Tenant-Code` 请求头路由到租户，该头由网关 ForwardAuth 校验登录态时按用户的 active 租户自动注入（管理员等无租户账号会收到 `400 missing X-Tenant-Code header`）；无工具调用中间步骤展示（后端尚未区分 tool-call 与最终回答 chunk）
 
 ## Docker 部署
 
@@ -224,6 +224,11 @@ kubectl rollout restart deployment/lead-mind
   - 一并清理页面弹窗内展示的真实数据库 ID（用户详情、审核开户向导、拒绝审核确认、作业详情头部、最新执行状态、执行明细弹窗标题），前端不再向管理员暴露任何主键值；审核开户向导第三步、开户完成提示改用用户名替代原来的用户 ID 展示
 - **2026-07-21**
   - 新增「AI 助手」一级菜单，对接新后端服务 ai-agent：新增 `api/aiAgentApi.js`，`chat()` 单轮非流式对话 + `chatStream()` SSE 流式对话；流式解析用 `fetch` + `ReadableStream` 手写 `event:`/`data:` 帧解析（后端用具名 event 区分 message/done/error，且需要携带 Authorization 头，浏览器原生 `EventSource` 两点都不满足）
-  - `AiAssistantPage.vue`：消息气泡区分用户/助手（对齐方向 + 底色），流式增量内容实时追加渲染、生成中显示打字光标动效；支持「停止生成」（`AbortController` 中止 fetch，仅停止前端接收，已生成内容保留）与「清空对话」；纯前端会话状态，刷新即清空（后端 `session_id` 字段存在但尚未接入多轮历史）
+  - `AiAssistantPage.vue`：消息气泡区分用户/助手（对齐方向 + 底色），流式增量内容实时追加渲染、生成中显示打字光标动效；支持「停止生成」（`AbortController` 中止 fetch，仅停止前端接收，已生成内容保留）与「清空对话」；纯前端会话状态，刷新即清空
   - `vite.config.js` 新增 `/ai-agent` 本地开发代理，并关闭 `buffer` 选项——默认开启会导致 SSE 响应被代理攒批而失去流式效果，经 curl 实测验证增量确实逐块到达（非攒批一次性下发）
   - 调研确认 ai-agent 当前无鉴权，靠请求头 `X-Tenant-Code` 路由到租户；该头由网关 `gateway-auth` ForwardAuth 中间件在校验 sso-service 登录态时按用户的 active 租户自动注入（`sso-service` 内部接口 `/internal/auth/verify` 逻辑），前端调用无需显式传递；无租户的账号（多为纯管理员账号）调用会收到 `400 missing X-Tenant-Code header`，属于后端既有的预期行为
+- **2026-07-23**
+  - 接入 ai-agent 新增的多轮会话能力（`session_id`）：`aiAgentApi.chat()`/`chatStream()` 首轮传空 `session_id`，把后端返回/回显的 `session_id`（非流式在响应体，流式在专属的 `event: session` 首帧）存起来，后续每轮原样带上，AI 助手现在能记住同一次对话里的上下文，此前每轮都被后端当成新会话（历史清零）
+  - `session_id` 只认后端回显的值，绝不在前端自造 UUID 顶替——否则会被后端误判为"客户端指定的已存在会话"直接走续接而非新建，若该 ID 从未被后端登记过会导致历史对不上
+  - `session_id` 存在组件内存（`ref`），不落路由 query：`AppLayout.vue` 的 `<keep-alive>` 用 `currentRoute.fullPath` 当 `:key`，写入 query 会在每次收到 `session` 事件时触发组件强制重挂载，把正在流式接收的回答打断；代价是刷新页面会开新对话，可接受（`messages` 本身也是纯内存状态，刷新同样会清空）
+  - 「清空对话」在清空消息列表的同时一并放弃 `sessionId`，避免下一条消息带着旧 id 续到已清空的历史上

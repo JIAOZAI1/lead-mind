@@ -14,6 +14,14 @@ const input = ref('')
 const sending = ref(false)
 const scrollRef = ref(null)
 
+// 会话 ID 只存在组件内存里，不落路由 query：AppLayout 的 <keep-alive> 用
+// currentRoute.fullPath 当 :key（见 src/layouts/AppLayout.vue），把 sessionId 写进 query
+// 会导致每次收到 session 事件都强制重挂载本组件、正在流式接收的回答被打断。
+// 代价是刷新页面会开新对话，可接受——messages 本身也是纯内存状态，刷新一样会清空。
+// 只认后端 `event: session` 帧回显的值，不在前端自己生成，否则续聊会被后端当成"客户端指定的已存在
+// session"直接走 Touch 而非 Create，若这个 ID 从未被 Create 注册过会导致历史对不上（见联调文档）
+const sessionId = ref('')
+
 let abortController = null
 
 function scrollToBottom() {
@@ -37,7 +45,11 @@ async function sendMessage() {
   abortController = new AbortController()
 
   await chatStream(text, {
+    sessionId: sessionId.value,
     signal: abortController.signal,
+    onSession(id) {
+      sessionId.value = id
+    },
     onDelta(delta) {
       assistantMsg.content += delta
       scrollToBottom()
@@ -73,6 +85,9 @@ function onEnterKey(ev) {
 
 function clearConversation() {
   messages.value = []
+  // 清空是"开新对话"的语义，session_id 必须一并放弃，不能复用，
+  // 否则下一条消息仍会带着旧 session_id 续到已清空的历史上
+  sessionId.value = ''
 }
 </script>
 
