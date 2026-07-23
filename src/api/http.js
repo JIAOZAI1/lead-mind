@@ -36,9 +36,10 @@ async function rawRequest(path, { method = 'GET', body, token } = {}) {
 
 // 单飞续期：多个请求同时收到 401 时只发一次 refresh
 // （后端 refresh token 采用轮换机制，同一个旧 token 用第二次会直接失效整个会话）
+// 导出供不走 request()/rawRequest() 的特殊请求复用（如 aiAgentApi 的 SSE fetch 流）
 let refreshPromise = null
 
-function refreshTokens(refreshToken) {
+export function refreshTokens(refreshToken) {
   refreshPromise ??= rawRequest(`${SSO_AUTH_BASE}/refresh`, {
     method: 'POST',
     body: { refreshToken },

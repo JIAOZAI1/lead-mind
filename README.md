@@ -232,3 +232,6 @@ kubectl rollout restart deployment/lead-mind
   - `session_id` 只认后端回显的值，绝不在前端自造 UUID 顶替——否则会被后端误判为"客户端指定的已存在会话"直接走续接而非新建，若该 ID 从未被后端登记过会导致历史对不上
   - `session_id` 存在组件内存（`ref`），不落路由 query：`AppLayout.vue` 的 `<keep-alive>` 用 `currentRoute.fullPath` 当 `:key`，写入 query 会在每次收到 `session` 事件时触发组件强制重挂载，把正在流式接收的回答打断；代价是刷新页面会开新对话，可接受（`messages` 本身也是纯内存状态，刷新同样会清空）
   - 「清空对话」在清空消息列表的同时一并放弃 `sessionId`，避免下一条消息带着旧 id 续到已清空的历史上
+- **2026-07-24**
+  - 修复 AI 助手页面长时间静默后 SSE 请求失败无提示的问题：`chatStream()` 此前直接用 `loadSession()` 取到的 access token 拼 `fetch`，不走 `http.js` 的 `request()`，所以 access token 过期（15 分钟）收到网关 401 后不会重试，页面停留久了发消息会静默失败；`http.js` 的 `refreshTokens` 改为导出，`aiAgentApi.js` 新增 `openStream()` 封装 401 → 静默续期 → 用新 token 重发一次的逻辑（与 `request()` 的 401 处理语义一致），refresh token 也失效时仍走既有的清会话跳登录页兜底
+  - 已用真实网关验证：伪造失效的 access token 发起 SSE 请求确认收到 401（网关 ForwardAuth 在请求到达 ai-agent 前就拦截，不会有半截 SSE 响应），用 refresh token 换新后重试请求可以正常完整拿到流式回复

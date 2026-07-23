@@ -1,7 +1,7 @@
 // ai-agent 服务接口封装：单轮对话（非流式）与 SSE 流式对话
 // 接口契约见后端仓库 lead-mind-ai-agent（internal/gateway/handler）
 // 鉴权：X-Tenant-Code 由后端网关按登录态自动注入，前端无需关心；access token 沿用统一会话体系
-import { API_ORIGIN, ApiError, request } from './http'
+import { API_ORIGIN, ApiError, refreshTokens, request } from './http'
 import { loadSession } from '../utils/authSession'
 
 const AI_AGENT_BASE = `${API_ORIGIN}/ai-agent/v1`
@@ -18,6 +18,35 @@ export const aiAgentApi = {
       body: { message, session_id: sessionId },
     }).then((data) => ({ tenantCode: data.tenant_code, sessionId: data.session_id, reply: data.reply }))
   },
+}
+
+/**
+ * 发起 SSE 请求并做 401 静默续期重试（不复用 http.js 的 request()，因为那条链路
+ * 是 JSON 请求专用的 rawRequest；这里需要拿到原始 Response 供调用方手动读流）。
+ * access token 15 分钟过期，聊天页可能长时间静默停留，过期后不重试会导致 fetch
+ * 直接收到网关 401、页面卡住无提示——语义上应与其它接口一致：静默续期后原样重发一次。
+ */
+async function openStream(url, signal) {
+  const session = loadSession()
+  const res = await fetch(url, {
+    headers: { Accept: 'text/event-stream', ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {}) },
+    signal,
+  })
+  if (res.ok) return res
+
+  if (res.status === 401 && session?.refreshToken) {
+    const tokens = await refreshTokens(session.refreshToken)
+    const retryRes = await fetch(url, {
+      headers: { Accept: 'text/event-stream', Authorization: `Bearer ${tokens.accessToken}` },
+      signal,
+    })
+    if (retryRes.ok) return retryRes
+    const data = await retryRes.json().catch(() => null)
+    throw new ApiError(retryRes.status, data?.error ?? `HTTP ${retryRes.status}`)
+  }
+
+  const data = await res.json().catch(() => null)
+  throw new ApiError(res.status, data?.error ?? `HTTP ${res.status}`)
 }
 
 /**
@@ -40,24 +69,12 @@ export const aiAgentApi = {
  * @returns {Promise<void>}
  */
 export async function chatStream(message, { sessionId = '', onSession, onDelta, onDone, onError, signal } = {}) {
-  const session = loadSession()
-  const headers = { Accept: 'text/event-stream' }
-  if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`
-
   const query = new URLSearchParams({ message })
   if (sessionId) query.set('session_id', sessionId)
+  const url = `${AI_AGENT_BASE}/chat/stream?${query}`
 
   try {
-    const res = await fetch(`${AI_AGENT_BASE}/chat/stream?${query}`, {
-      method: 'GET',
-      headers,
-      signal,
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => null)
-      throw new ApiError(res.status, data?.error ?? `HTTP ${res.status}`)
-    }
-
+    const res = await openStream(url, signal)
     const reader = res.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
