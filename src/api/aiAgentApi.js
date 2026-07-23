@@ -18,6 +18,41 @@ export const aiAgentApi = {
       body: { message, session_id: sessionId },
     }).then((data) => ({ tenantCode: data.tenant_code, sessionId: data.session_id, reply: data.reply }))
   },
+
+  /**
+   * 会话列表（仅元数据：标题/置顶/归档/时间戳，不含对话内容）→ Session[]
+   * 置顶优先、其余按最近活跃倒序，与后端排序保持一致
+   */
+  listSessions({ includeArchived = false } = {}) {
+    return request(`${AI_AGENT_BASE}/sessions?include_archived=${includeArchived}`).then((data) =>
+      data.map(toSession),
+    )
+  },
+
+  /** 局部更新会话：重命名 / 置顶 / 归档，三个字段都可选，只传变化的 */
+  patchSession(sessionId, { title, pinned, archived } = {}) {
+    const body = {}
+    if (title !== undefined) body.title = title
+    if (pinned !== undefined) body.pinned = pinned
+    if (archived !== undefined) body.archived = archived
+    return request(`${AI_AGENT_BASE}/sessions/${sessionId}`, { method: 'PATCH', body }).then(toSession)
+  },
+
+  /** 删除会话：清除元数据与未过期的短期对话历史，不可撤销 */
+  deleteSession(sessionId) {
+    return request(`${AI_AGENT_BASE}/sessions/${sessionId}`, { method: 'DELETE' })
+  },
+}
+
+function toSession(data) {
+  return {
+    id: data.id,
+    title: data.title,
+    pinned: data.pinned,
+    archived: data.archived,
+    createdAt: data.created_at,
+    lastActiveAt: data.last_active_at,
+  }
 }
 
 /**
