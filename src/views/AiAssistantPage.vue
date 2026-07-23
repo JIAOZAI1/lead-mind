@@ -21,12 +21,11 @@ const scrollRef = ref(null)
 // session"直接走 Touch 而非 Create，若这个 ID 从未被 Create 注册过会导致历史对不上（见联调文档）
 const sessionId = ref('')
 
-// 会话列表：仅元数据（标题/置顶/归档/时间戳），后端没有拉取历史消息的接口——
-// 切换到旧会话只能"接着聊"（服务端按 session_id 续接短期记忆里的上下文），
-// 前端无法把之前聊过的内容回放到消息区，进面板时用提示条说明这一点
+// 会话列表：仅元数据（标题/置顶/归档/时间戳）；对话内容是独立接口按需拉取（见 switchToSession）
 const sessions = ref([])
 const sessionsLoading = ref(false)
 const showArchived = ref(false)
+const messagesLoading = ref(false)
 
 let abortController = null
 
@@ -52,7 +51,7 @@ onMounted(loadSessions)
 
 async function sendMessage() {
   const text = input.value.trim()
-  if (!text || sending.value) return
+  if (!text || sending.value || messagesLoading.value) return
 
   const isFirstTurnOfSession = !sessionId.value
   messages.value.push({ role: 'user', content: text })
@@ -111,16 +110,38 @@ function onEnterKey(ev) {
 
 /** 新建对话：放弃当前 session_id，下一条消息会让后端新建会话 */
 function startNewConversation() {
-  if (sending.value) return
+  if (sending.value || messagesLoading.value) return
   messages.value = []
   sessionId.value = ''
 }
 
-/** 切换到历史会话：只能接续对话，无法回放之前聊过的内容（后端未提供该接口） */
-function switchToSession(session) {
-  if (sending.value || session.id === sessionId.value) return
-  messages.value = []
+/**
+ * 后端历史消息 → 消息气泡展示模型
+ * role 除 user/assistant 外还有 tool（工具执行结果），暂无专门的工具调用 UI，
+ * 归到 assistant 侧按纯文本展示；assistant 发起 tool_calls 时 content 可能是空字符串，
+ * 这类"过程消息"不渲染成气泡（当前 UI 只展示最终回答，与流式路径的呈现方式保持一致）
+ */
+function toDisplayMessages(historyMessages) {
+  return historyMessages
+    .filter((m) => m.role !== 'assistant' || m.content || !m.toolCalls?.length)
+    .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
+}
+
+/** 切换到历史会话：拉取该会话的完整历史消息并回显 */
+async function switchToSession(session) {
+  if (sending.value || messagesLoading.value || session.id === sessionId.value) return
   sessionId.value = session.id
+  messages.value = []
+  messagesLoading.value = true
+  try {
+    const history = await aiAgentApi.getSessionMessages(session.id)
+    messages.value = toDisplayMessages(history)
+    scrollToBottom()
+  } catch (err) {
+    AxMessage.error(`历史消息加载失败：${err.message}`)
+  } finally {
+    messagesLoading.value = false
+  }
 }
 
 const renameVisible = ref(false)
@@ -208,7 +229,7 @@ function onToggleShowArchived() {
 <template>
   <div class="ai-assistant">
     <aside class="ai-assistant__sidebar">
-      <ax-button block type="primary" :disabled="sending" @click="startNewConversation">
+      <ax-button block type="primary" :disabled="sending || messagesLoading" @click="startNewConversation">
         <ax-icon name="plus" size="sm" />新建对话
       </ax-button>
 
@@ -256,21 +277,15 @@ function onToggleShowArchived() {
           <ax-icon name="star" size="sm" />
           <span>AI 助手</span>
         </div>
-        <ax-button size="sm" :disabled="messages.length === 0" @click="startNewConversation">
+        <ax-button size="sm" :disabled="messages.length === 0 || messagesLoading" @click="startNewConversation">
           <ax-icon name="delete" size="sm" />清空对话
         </ax-button>
       </div>
 
-      <ax-alert
-        v-if="sessionId && messages.length === 0"
-        type="info"
-        description="继续对话可以接上这个会话之前的上下文，但历史消息暂不支持在此回显。"
-        show-icon
-        class="ai-assistant__resume-hint"
-      />
-
       <div ref="scrollRef" class="ai-assistant__body">
-        <div v-if="messages.length === 0 && !sessionId" class="ai-assistant__empty">
+        <div v-if="messagesLoading" class="ai-assistant__empty">加载历史消息中…</div>
+
+        <div v-else-if="messages.length === 0 && !sessionId" class="ai-assistant__empty">
           <ax-icon name="star" size="lg" />
           <p>你好{{ currentUser ? `，${currentUser.username}` : '' }}，我是 AI 助手，有什么可以帮你的？</p>
         </div>
@@ -296,10 +311,10 @@ function onToggleShowArchived() {
         <ax-input
           v-model="input"
           placeholder="输入你的问题，Enter 发送，Shift+Enter 换行"
-          :disabled="sending"
+          :disabled="sending || messagesLoading"
           @keydown.enter="onEnterKey"
         />
-        <ax-button v-if="!sending" type="primary" :disabled="!input.trim()" @click="sendMessage">
+        <ax-button v-if="!sending" type="primary" :disabled="!input.trim() || messagesLoading" @click="sendMessage">
           <ax-icon name="send" size="sm" />发送
         </ax-button>
         <ax-button v-else type="danger" plain @click="stopGenerating">
@@ -445,11 +460,6 @@ function onToggleShowArchived() {
   font-size: var(--axis-font-size-lg);
   font-weight: var(--axis-font-weight-semibold);
   color: var(--axis-color-text-primary);
-}
-
-.ai-assistant__resume-hint {
-  flex-shrink: 0;
-  margin: var(--axis-space-4) var(--axis-space-6) 0;
 }
 
 .ai-assistant__body {

@@ -42,6 +42,26 @@ export const aiAgentApi = {
   deleteSession(sessionId) {
     return request(`${AI_AGENT_BASE}/sessions/${sessionId}`, { method: 'DELETE' })
   },
+
+  /**
+   * 拉取会话的完整历史消息（不过期的 MySQL 存档，非受 TTL 限制的短期记忆）→ Message[]
+   * 按时间正序返回；role 除 user/assistant 外还可能是 tool（工具执行结果，服务端暂无对应 UI，
+   * 前端按纯文本气泡展示）；assistant 触发工具调用时 content 可能为空字符串
+   */
+  getSessionMessages(sessionId) {
+    return request(`${AI_AGENT_BASE}/sessions/${sessionId}/messages`).then((data) => data.map(toMessage))
+  },
+}
+
+function toMessage(data) {
+  return {
+    role: data.role,
+    content: data.content,
+    toolCalls: data.tool_calls,
+    toolCallId: data.tool_call_id,
+    toolName: data.tool_name,
+    createdAt: data.created_at,
+  }
 }
 
 function toSession(data) {
