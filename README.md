@@ -36,6 +36,7 @@ src/
 ├── api/          # 接口封装
 │   ├── http.js           # 统一请求层：JSON 编解码、错误规整、401 自动续期（refresh token 单飞轮换）
 │   ├── authApi.js        # sso-service 认证接口（注册/登录/注销/用户信息）+ 错误文案中文化
+│   ├── oauthApi.js       # Chrome 插件 Authorization Code + PKCE 授权
 │   ├── jobApi.js         # backend-job-service 作业调度接口（作业/任务/执行记录/状态轮询）+ 枚举展示元数据
 │   ├── adminApi.js       # admin-service 管理接口（数据库实例管理 / 用户审核开户）
 │   ├── userApi.js        # 用户管理接口（全量用户列表 / 重置密码 / 角色分配与移除，跨 admin-service + sso-service）
@@ -58,6 +59,7 @@ src/
 ├── views/        # 页面级组件（与路由一一对应）
 │   ├── LoginPage.vue             # /login 登录页
 │   ├── RegisterPage.vue          # /register 注册页
+│   ├── OAuthAuthorizePage.vue    # /oauth/authorize Chrome 插件授权确认页
 │   ├── DashboardPage.vue         # /dashboard 工作台
 │   ├── JobsPage.vue              # /jobs 后台作业列表
 │   ├── JobDetailPage.vue         # /jobs/:jobId 作业详情（任务编排 + 执行记录 + 状态轮询）
@@ -79,6 +81,7 @@ src/
 | 登录 | `src/views/LoginPage.vue` | 对接 sso-service 真实登录：账号/密码登录换取 JWT token 对，`/me` 拉取用户信息；AxForm 声明式校验，记住我（勾选存 localStorage，否则关标签页即失效）、注册入口，接口错误中文提示 |
 | 注册 | `src/views/RegisterPage.vue` | 对接 sso-service 注册：用户名/邮箱/密码/确认密码，校验规则与后端约束一致（用户名 3~64、密码 8~128、邮箱格式、两次密码一致），注册成功自动登录进工作台 |
 | 会话管理 | `src/api/http.js` | 请求默认携带 access token（后端网关对所有业务服务统一挂 ForwardAuth 登录校验，仅登录/注册/续期/注销匿名可达）；access token 15 分钟过期后由 refresh token 静默续期（单飞防并发、token 轮换）；refresh token 也失效时自动清会话回登录页；退出登录同步作废后端 refresh token |
+| Chrome 插件授权 | `/oauth/authorize` → `OAuthAuthorizePage.vue` | 复用现有 Web 登录态，展示插件授权确认；把 client、回调地址、state 与 PKCE challenge 交由 sso-service 白名单校验，获得一次性 authorization code 后跳转 Chrome Identity 回调，密码和 Token 均不进入 URL |
 | 主框架 | `src/layouts/AppLayout.vue` | 左侧 AxMenu 菜单栏（工作台 / 客户开发二级菜单 / AI 助手 / 后台作业 / 注册审核与开户（仅 admin 角色可见）/ 数据库实例注册（仅 admin 角色可见）/ 用户管理（仅 admin 角色可见）/ 系统设置），顶栏展示用户信息（用户名、邮箱提示、退出）与主题切换，菜单高亮跟随路由 |
 | 多页签工作区 | `src/composables/useWorkspaceTabs.js` | 点击菜单打开对应页签（AxTabs 导航条），切换页签经 keep-alive 保留页内状态（如列表分页/排序）；页签可关闭（工作台常驻不可关，关闭时释放页面缓存并跳相邻页签）；详情页归入所属菜单页签并记住最后访问位置；刷新后从 sessionStorage 恢复已打开页签，退出登录自动清空 |
 | 工作台 | `/dashboard` → `DashboardPage.vue` | 欢迎语 + 概览统计卡片（模拟数据） |
@@ -149,6 +152,9 @@ kubectl rollout restart deployment/lead-mind
 - 优先复用 axis-ui 组件，不手搓自定义组件和样式
 
 ## 更新记录
+
+- **2026-07-27**
+  - 新增 `/oauth/authorize` Chrome 插件授权确认页和 `oauthApi.js`：未登录时沿用全局守卫跳转现有登录页，登录后原路返回；授权请求由后端校验固定 client/redirect URI 与 PKCE，前端只跳转后端返回的可信回调地址
 
 - **2026-07-07**
   - 初始化项目（create-vue + Vite）

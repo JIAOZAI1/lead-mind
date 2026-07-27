@@ -254,16 +254,16 @@ function onToggleShowArchived() {
           <ax-tag v-if="session.archived">已归档</ax-tag>
 
           <div class="ai-assistant__session-actions" @click.stop>
-            <ax-tooltip content="重命名" placement="top">
+            <ax-tooltip content="重命名" placement="bottom">
               <ax-link size="sm" @click="openRenameModal(session)"><ax-icon name="edit" size="sm" /></ax-link>
             </ax-tooltip>
-            <ax-tooltip :content="session.pinned ? '取消置顶' : '置顶'" placement="top">
+            <ax-tooltip :content="session.pinned ? '取消置顶' : '置顶'" placement="bottom">
               <ax-link size="sm" @click="togglePinned(session)"><ax-icon name="star" size="sm" /></ax-link>
             </ax-tooltip>
-            <ax-tooltip :content="session.archived ? '取消归档' : '归档'" placement="top">
+            <ax-tooltip :content="session.archived ? '取消归档' : '归档'" placement="bottom">
               <ax-link size="sm" @click="toggleArchived(session)"><ax-icon name="folder" size="sm" /></ax-link>
             </ax-tooltip>
-            <ax-tooltip content="删除" placement="top">
+            <ax-tooltip content="删除" placement="bottom">
               <ax-link size="sm" type="danger" @click="confirmDelete(session)"><ax-icon name="delete" size="sm" /></ax-link>
             </ax-tooltip>
           </div>

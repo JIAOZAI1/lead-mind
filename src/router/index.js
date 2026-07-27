@@ -5,6 +5,7 @@ import AppLayout from '../layouts/AppLayout.vue'
 // 页面组件全部懒加载：按路由分包，首屏只加载当前页面的代码
 const LoginPage = () => import('../views/LoginPage.vue')
 const RegisterPage = () => import('../views/RegisterPage.vue')
+const OAuthAuthorizePage = () => import('../views/OAuthAuthorizePage.vue')
 const DashboardPage = () => import('../views/DashboardPage.vue')
 const JobsPage = () => import('../views/JobsPage.vue')
 const JobDetailPage = () => import('../views/JobDetailPage.vue')
@@ -19,6 +20,12 @@ const router = createRouter({
   routes: [
     { path: '/login', name: 'login', component: LoginPage, meta: { public: true, title: '登录' } },
     { path: '/register', name: 'register', component: RegisterPage, meta: { public: true, title: '注册' } },
+    {
+      path: '/oauth/authorize',
+      name: 'oauth-authorize',
+      component: OAuthAuthorizePage,
+      meta: { title: '授权 Chrome 插件' },
+    },
     {
       // 业务页面统一挂在 AppLayout 下：共享侧边菜单 + 顶栏，子路由渲染进内容区
       path: '/',

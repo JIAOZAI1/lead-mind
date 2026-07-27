@@ -27,11 +27,11 @@ export function useAuth() {
     return user
   }
 
-  /** 退出登录：通知后端作废 refresh token（失败不阻塞前端登出），路由跳转由调用方负责 */
+  /** 退出登录：通知后端撤销 refresh/access token（失败不阻塞本地登出），路由跳转由调用方负责 */
   function logout() {
     const session = loadSession()
     if (session?.refreshToken) {
-      authApi.logout(session.refreshToken).catch(() => {})
+      authApi.logout(session.refreshToken, session.accessToken).catch(() => {})
     }
     clearSession()
     currentUser.value = null

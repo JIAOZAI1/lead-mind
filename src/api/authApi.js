@@ -35,11 +35,11 @@ export const authApi = {
     })
   },
 
-  /** 注销：使 refresh token 即时失效（凭 refreshToken 本身注销，不带 access token） */
-  logout(refreshToken) {
+  /** 注销：立即撤销 refresh token，并把当前 access token 加入服务端黑名单 */
+  logout(refreshToken, accessToken) {
     return request(`${SSO_AUTH_BASE}/logout`, {
       method: 'POST',
-      body: { refreshToken },
+      body: { refreshToken, accessToken },
       auth: false,
     })
   },
