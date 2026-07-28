@@ -19,20 +19,20 @@ export default defineConfig({
       // 网关 CORS 白名单没有 vite 默认端口 localhost:5173，浏览器直连会被拦；
       // 生产构建直连后端域名（见 .env.production），不走此代理
       '/sso-service': {
-        target: 'http://lead-mind-backend.dev.com',
+        target: 'https://lead-mind-backend.dev.com',
         changeOrigin: true,
       },
       '/backend-job-service': {
-        target: 'http://lead-mind-backend.dev.com',
+        target: 'https://lead-mind-backend.dev.com',
         changeOrigin: true,
       },
       '/admin-service': {
-        target: 'http://lead-mind-backend.dev.com',
+        target: 'https://lead-mind-backend.dev.com',
         changeOrigin: true,
       },
       // SSE 流式接口需要关闭代理缓冲，否则增量内容会被攒批一次性下发
       '/ai-agent': {
-        target: 'http://lead-mind-backend.dev.com',
+        target: 'https://lead-mind-backend.dev.com',
         changeOrigin: true,
         buffer: false,
       },

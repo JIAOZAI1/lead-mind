@@ -6,9 +6,6 @@ metadata:
   name: lead-mind
   labels:
     app.kubernetes.io/name: lead-mind
-  # 如需 HTTPS，配合 cert-manager 加上：
-  # annotations:
-  #   cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   # dev 集群为 k3s，使用其内置的 Traefik 控制器（集群默认 IngressClass）
   ingressClassName: traefik
@@ -25,7 +22,9 @@ spec:
                 name: lead-mind
                 port:
                   name: http
-  # HTTPS 证书（配合上方 cert-manager 注解使用）：
-  # tls:
-  #   - hosts: [lead-mind.dev.com]
-  #     secretName: lead-mind-tls
+  # HTTPS：lead-mind.dev.com 是内网自建域名，Let's Encrypt 无法校验，
+  # 故用 openssl 自签证书（10 年有效期）手动生成后 kubectl create secret 导入，
+  # 未接入 cert-manager 自动轮换。安全上下文是 navigator.clipboard 等浏览器 API 的前提。
+  tls:
+    - hosts: [lead-mind.dev.com]
+      secretName: lead-mind-tls
