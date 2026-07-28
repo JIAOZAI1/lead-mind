@@ -257,3 +257,5 @@ kubectl rollout restart deployment/lead-mind
   - AI 助手页面接入新增的聚焦方法：`AiAssistantPage.vue` 在 `chatStream()` 回调 `onDone` 处调用 `nextTick(() => inputRef.value?.focus())`，确保助手消息流结束后输入框重获焦点
   - axis-ui 升级至 0.9.2：内部修复，无新增/移除的组件导出与设计 Token，业务代码无需改动
   - 【待反馈 axis-ui】排查 AI 助手流式对话"回答含代码块时看起来像一次性生成"的问题：用 DevTools Performance 录制确认网络分片、后端 flush、SSE 解析、Vue 响应式更新全链路正常，根因在 `AxMarkdown` 对未闭合围栏代码块的渲染——增量文本被识别为同一个 `<pre><code>` 内持续增长的高亮代码块，视觉密度均匀导致逐字增长不可辨，直到代码块闭合才有肉眼可见的结构变化；已整理具体描述反馈给 UI 团队，建议方向为流式光标提示、代码高亮延迟到围栏闭合后再触发
+  - axis-ui 升级至 0.9.3：内部修复，无新增/移除的组件导出与设计 Token，业务代码无需改动
+  - 多页签工作区新增快捷键关闭：`Ctrl/Cmd+W` 关闭当前激活页签，浏览器默认会用这个组合键关闭标签页本身，`AppLayout.vue` 监听全局 `keydown` 并 `preventDefault` 拦截，复用既有的 `closeTab()` 逻辑（工作台首页签不可关闭、关闭当前页签自动跳到相邻页签），与鼠标点击关闭按钮行为完全一致

@@ -1,6 +1,7 @@
 <script setup>
 // 应用统一布局：左侧菜单栏 + 顶栏（页面标题 / 用户信息），内容区渲染当前子路由页面
 // 新增页面 = router 加一条子路由 + useNavigation.js 菜单配置加一项
+import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
@@ -20,6 +21,17 @@ function onLogout() {
   resetTabs()
   router.push({ name: 'login' })
 }
+
+// 快捷键 Ctrl/Cmd+W 关闭当前页签：浏览器默认行为是关闭标签页，必须 preventDefault 拦截；
+// 工作台是常驻首页签，closeTab 内部已对 HOME_TAB_KEY 做了跳过
+function onKeydown(ev) {
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'w') {
+    ev.preventDefault()
+    closeTab(activeTab.value)
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
