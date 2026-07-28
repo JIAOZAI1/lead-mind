@@ -14,7 +14,7 @@ const { isDark, toggle: onToggleTheme } = useTheme()
 <template>
   <div class="auth-page">
     <div class="auth-page__theme">
-      <ax-tooltip :content="isDark ? '切换到亮色主题' : '切换到暗色主题'" placement="bottom">
+      <ax-tooltip :content="isDark ? '切换到亮色主题' : '切换到暗色主题'" placement="left">
         <ax-link type="default" @click="onToggleTheme">
           <ax-icon :name="isDark ? 'moon' : 'sun'" />
         </ax-link>
