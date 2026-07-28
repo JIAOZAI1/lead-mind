@@ -44,13 +44,14 @@ function onLogout() {
       <header class="app-layout__header">
         <div class="app-layout__title">{{ activeMenuLabel }}</div>
         <div class="app-layout__user">
-          <ax-tooltip :content="isDark ? '切换到亮色主题' : '切换到暗色主题'" placement="bottom">
+          <ax-tooltip :content="isDark ? '切换到亮色主题' : '切换到暗色主题'" placement="left">
             <ax-link type="default" @click="onToggleTheme">
               <ax-icon :name="isDark ? 'moon' : 'sun'" />
             </ax-link>
           </ax-tooltip>
           <!-- 用户信息来自 sso-service /me（角色/租户后端暂未提供） -->
-          <ax-tooltip :content="`邮箱：${currentUser.email}`" placement="bottom">
+          <!-- 用户名贴近顶栏右边缘，bottom 方向展开易超出视口触发横向滚动条，改用 left -->
+          <ax-tooltip :content="`邮箱：${currentUser.email}`" placement="left">
             <span class="app-layout__username">{{ currentUser.username }}</span>
           </ax-tooltip>
           <ax-link type="default" size="sm" @click="onLogout">退出</ax-link>
