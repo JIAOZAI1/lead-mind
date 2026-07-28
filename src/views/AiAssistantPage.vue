@@ -13,6 +13,7 @@ const messages = ref([])
 const input = ref('')
 const sending = ref(false)
 const scrollRef = ref(null)
+const inputRef = ref(null)
 
 // 会话 ID 只存在组件内存里，不落路由 query：AppLayout 的 <keep-alive> 用
 // currentRoute.fullPath 当 :key（见 src/layouts/AppLayout.vue），把 sessionId 写进 query
@@ -82,6 +83,8 @@ async function sendMessage() {
         const item = sessions.value.find((s) => s.id === sessionId.value)
         if (item) sessions.value = [item, ...sessions.value.filter((s) => s.id !== sessionId.value)]
       }
+      // 助手回复完成后重新聚焦输入框
+      nextTick(() => inputRef.value?.focus())
     },
     onError(err) {
       assistantMsg.streaming = false
@@ -309,6 +312,7 @@ function onToggleShowArchived() {
 
       <div class="ai-assistant__footer">
         <ax-input
+          ref="inputRef"
           v-model="input"
           placeholder="输入你的问题，Enter 发送，Shift+Enter 换行"
           :disabled="sending || messagesLoading"

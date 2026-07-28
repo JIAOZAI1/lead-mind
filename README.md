@@ -253,3 +253,5 @@ kubectl rollout restart deployment/lead-mind
 - **2026-07-28**
   - axis-ui 升级至 0.9.0：新增 `AxDrawer`/`AxLayout`/`AxLayoutHeader`/`AxLayoutSider`/`AxLayoutContent` 布局组件；新增 `--axis-panel-width-sm/md/lg` 三档侧边栏 Token（240px/300px/360px），替代业务页面硬编码或 L3 派生的宽度计算
   - AI 助手会话列表侧边栏改用 `--axis-panel-width-sm` Token，布局更规范：移除之前的 L3 派生公式（`calc(var(--axis-container-sm) * 0.52)`），直接消费标准 Token，页面样式简化且符合全局设计体系
+  - axis-ui 升级至 0.9.1：修复两个聚焦问题：①`AxInput` 新增 `defineExpose({ focus() })` 方法供父组件主动聚焦（用于 AI 助手页助手回复完成后自动聚焦输入框）；②`AxInput` 的清空按钮添加 `tabindex="-1"` 移出键盘 Tab 导航流（登录/注册页 Tab 键现在直接跳到下个表单控件，不再卡在清空按钮）
+  - AI 助手页面接入新增的聚焦方法：`AiAssistantPage.vue` 在 `chatStream()` 回调 `onDone` 处调用 `nextTick(() => inputRef.value?.focus())`，确保助手消息流结束后输入框重获焦点
