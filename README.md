@@ -250,3 +250,6 @@ kubectl rollout restart deployment/lead-mind
   - 后端新增 `GET /ai-agent/v1/sessions/{id}/messages`，拉取会话完整历史消息——数据源是新增的 MySQL 存档表（`internal/memory/transcript`，append-only、不过期），区别于驱动模型上下文的 Redis 短期记忆（有 TTL、会被 compaction 摘要/截断），存档里是压缩前的原始消息；`aiAgentApi.js` 新增 `getSessionMessages()`
   - AI 助手侧边栏点击历史会话不再只是"接着聊"，改为先拉取该会话的完整历史消息回显到消息区，再继续对话；加载中禁用输入框/发送/新建对话/切换会话，避免加载过程中产生竞态；此前"历史消息暂不支持回显"的提示条随之移除
   - 历史消息里 `role` 除 `user`/`assistant` 外还可能是 `tool`（工具调用结果），以及 `assistant` 触发工具调用但 `content` 为空的"过程消息"——当前 UI 没有工具调用可视化，这类消息不渲染成气泡，只回显最终的用户/助手问答内容，与流式对话路径的呈现方式保持一致
+- **2026-07-28**
+  - axis-ui 升级至 0.9.0：新增 `AxDrawer`/`AxLayout`/`AxLayoutHeader`/`AxLayoutSider`/`AxLayoutContent` 布局组件；新增 `--axis-panel-width-sm/md/lg` 三档侧边栏 Token（240px/300px/360px），替代业务页面硬编码或 L3 派生的宽度计算
+  - AI 助手会话列表侧边栏改用 `--axis-panel-width-sm` Token，布局更规范：移除之前的 L3 派生公式（`calc(var(--axis-container-sm) * 0.52)`），直接消费标准 Token，页面样式简化且符合全局设计体系

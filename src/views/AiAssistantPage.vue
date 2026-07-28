@@ -357,7 +357,7 @@ function onToggleShowArchived() {
   flex-direction: column;
   gap: var(--axis-space-3);
   flex-shrink: 0;
-  width: var(--axis-container-sm);
+  width: var(--axis-panel-width-sm);
   padding: var(--axis-space-4);
   background: var(--axis-color-bg-container);
   border: 1px solid var(--axis-color-border-split);
